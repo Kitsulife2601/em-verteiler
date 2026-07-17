@@ -53,44 +53,66 @@ select option{background:#1a0d33;color:var(--text)}
 }
 
 /* ================= Auth-Seite ================= */
-.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;padding-top:calc(24px + env(safe-area-inset-top))}
+.auth-wrap{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;padding-top:calc(24px + env(safe-area-inset-top));overflow:hidden}
+.auth-orb{position:absolute;border-radius:50%;filter:blur(65px);opacity:.5;pointer-events:none;z-index:0;animation:float 15s ease-in-out infinite}
+.auth-orb.o1{width:320px;height:320px;background:radial-gradient(circle,#a855f7,transparent 70%);top:-70px;left:-50px}
+.auth-orb.o2{width:280px;height:280px;background:radial-gradient(circle,#ec4899,transparent 70%);bottom:-50px;right:-40px;animation-delay:-6s}
+.auth-orb.o3{width:240px;height:240px;background:radial-gradient(circle,#6366f1,transparent 70%);top:42%;right:-70px;animation-delay:-10s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(24px,-28px) scale(1.09)}66%{transform:translate(-18px,18px) scale(.94)}}
 .auth-card{
-  width:100%;max-width:420px;border-radius:24px;padding:32px 28px;
-  background:var(--glass);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+  position:relative;z-index:1;width:100%;max-width:420px;border-radius:26px;padding:34px 28px 30px;overflow:hidden;
+  background:var(--glass-strong);backdrop-filter:blur(26px) saturate(170%);-webkit-backdrop-filter:blur(26px) saturate(170%);
   border:1px solid var(--border);
-  box-shadow:0 0 40px rgba(124,58,237,.25),0 24px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+  box-shadow:0 0 50px rgba(124,58,237,.28),0 30px 70px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.1);
+  transition:box-shadow .4s;animation:cardIn .5s ease both;
 }
-.auth-logo{text-align:center;font-size:2.4rem;margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(168,85,247,.8))}
+@keyframes cardIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.auth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#a855f7,#7c3aed);box-shadow:0 0 18px rgba(168,85,247,.7);transition:background .4s,box-shadow .4s}
+.auth-card.mode-register::before{background:linear-gradient(90deg,#ec4899,#a855f7);box-shadow:0 0 18px rgba(236,72,153,.7)}
+.auth-card.mode-register{box-shadow:0 0 50px rgba(236,72,153,.25),0 30px 70px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.1)}
+.auth-logo{text-align:center;font-size:2.6rem;margin-bottom:8px;filter:drop-shadow(0 0 14px rgba(168,85,247,.85));transition:filter .4s}
+.auth-card.mode-register .auth-logo{filter:drop-shadow(0 0 14px rgba(236,72,153,.85))}
 .auth-title{
-  text-align:center;margin:0 0 4px;font-size:1.5rem;font-weight:800;letter-spacing:.02em;
-  background:linear-gradient(120deg,#e9d5ff,var(--neon) 45%,#8b5cf6);
+  text-align:center;margin:0 0 4px;font-size:1.55rem;font-weight:800;letter-spacing:.01em;
+  background:linear-gradient(120deg,#f3e8ff,var(--neon) 50%,#8b5cf6);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   text-shadow:0 0 24px rgba(168,85,247,.35);
 }
-.auth-sub{text-align:center;color:var(--muted);font-size:.85rem;margin:0 0 22px}
-.auth-tabs{display:flex;gap:6px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:20px}
+.auth-card.mode-register .auth-title{background:linear-gradient(120deg,#fce7f3,#f472b6 50%,#a855f7);-webkit-background-clip:text;background-clip:text}
+.auth-sub{text-align:center;color:var(--muted);font-size:.86rem;margin:0 0 22px;min-height:1.1em}
+.auth-tabs{display:flex;gap:6px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:22px}
 .auth-tab{
-  flex:1;padding:10px;border:none;border-radius:10px;background:transparent;color:var(--muted);
-  font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;
+  flex:1;padding:11px;border:none;border-radius:10px;background:transparent;color:var(--muted);
+  font-size:.92rem;font-weight:700;cursor:pointer;transition:all .25s;
 }
 .auth-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:var(--glow)}
+.auth-card.mode-register #tabRegister.active{background:linear-gradient(135deg,#ec4899,#a855f7);box-shadow:0 0 18px rgba(236,72,153,.5)}
 .auth-card label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:14px}
 .auth-card label input{margin-top:6px}
+.pass-wrap{display:block;position:relative}
+.pass-wrap input{padding-right:46px}
+.pass-toggle{position:absolute;right:6px;top:calc(50% + 3px);transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:6px;line-height:1}
+.pass-hint{font-size:.72rem;color:var(--muted);margin:-8px 0 14px;padding-left:2px}
 .auth-error{
-  color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);
-  padding:10px 12px;border-radius:12px;font-size:.85rem;margin-bottom:14px;
+  color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.38);
+  padding:11px 13px;border-radius:12px;font-size:.85rem;margin-bottom:14px;line-height:1.45;
 }
+.auth-error a{color:#fff;font-weight:700;text-decoration:underline;cursor:pointer;white-space:nowrap}
 .btn-neon{
-  width:100%;padding:13px;border:none;border-radius:14px;cursor:pointer;
-  font-size:1rem;font-weight:700;color:#fff;
+  width:100%;padding:14px;border:none;border-radius:14px;cursor:pointer;
+  font-size:1.02rem;font-weight:700;color:#fff;letter-spacing:.01em;
   background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
-  box-shadow:0 0 22px rgba(168,85,247,.45),0 6px 18px rgba(0,0,0,.4);
-  transition:transform .15s,box-shadow .2s;
+  box-shadow:0 0 24px rgba(168,85,247,.5),0 6px 18px rgba(0,0,0,.4);
+  transition:transform .15s,box-shadow .25s,background .4s;
 }
-.btn-neon:hover{box-shadow:0 0 32px rgba(168,85,247,.65),0 6px 18px rgba(0,0,0,.4)}
+.auth-card.mode-register .btn-neon{background:linear-gradient(135deg,#ec4899,#a855f7);box-shadow:0 0 24px rgba(236,72,153,.5),0 6px 18px rgba(0,0,0,.4)}
+.btn-neon:hover{box-shadow:0 0 34px rgba(168,85,247,.7),0 6px 18px rgba(0,0,0,.4)}
 .btn-neon:active{transform:scale(.97)}
 .btn-neon:disabled{opacity:.6;cursor:default}
-.auth-hint{text-align:center;color:var(--muted);font-size:.75rem;margin:16px 0 0}
+.auth-switch{text-align:center;color:var(--muted);font-size:.82rem;margin:16px 0 0}
+.auth-switch b{color:var(--neon);cursor:pointer;font-weight:700}
+.auth-card.mode-register .auth-switch b{color:#f472b6}
+.auth-hint{text-align:center;color:var(--muted);font-size:.72rem;margin:14px 0 0;opacity:.85}
 .oauth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.78rem;margin:18px 0 14px}
 .oauth-divider::before,.oauth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .oauth-btns{display:flex;flex-direction:column;gap:10px}
@@ -252,10 +274,13 @@ select option{background:#1a0d33;color:var(--text)}
 
 <!-- ================= Anmeldeseite ================= -->
 <div id="authView" class="auth-wrap hidden">
-  <div class="auth-card">
-    <div class="auth-logo">📬</div>
-    <h1 class="auth-title">Handy-Mail</h1>
-    <p class="auth-sub">Melde dich an, um deine Postfächer zu öffnen.</p>
+  <div class="auth-orb o1"></div>
+  <div class="auth-orb o2"></div>
+  <div class="auth-orb o3"></div>
+  <div id="authCard" class="auth-card mode-login">
+    <div id="authLogo" class="auth-logo">📬</div>
+    <h1 id="authTitle" class="auth-title">Willkommen zurück 👋</h1>
+    <p id="authSub" class="auth-sub">Melde dich an, um deine Postfächer zu öffnen.</p>
     <div class="auth-tabs">
       <button id="tabLogin" class="auth-tab active" type="button">Anmelden</button>
       <button id="tabRegister" class="auth-tab" type="button">Registrieren</button>
@@ -268,11 +293,16 @@ select option{background:#1a0d33;color:var(--text)}
         <input id="authEmail" type="email" autocomplete="username" required placeholder="name@beispiel.de" />
       </label>
       <label>Passwort
-        <input id="authPass" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
+        <span class="pass-wrap">
+          <input id="authPass" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
+          <button id="passToggle" class="pass-toggle" type="button" aria-label="Passwort anzeigen">👁</button>
+        </span>
       </label>
+      <div id="passHint" class="pass-hint hidden">Mindestens 6 Zeichen wählen.</div>
       <div id="authError" class="auth-error hidden"></div>
       <button id="authSubmit" class="btn-neon" type="submit">Anmelden</button>
     </form>
+    <p id="authSwitch" class="auth-switch"></p>
     <div id="oauthDivider" class="oauth-divider hidden"><span>oder weiter mit</span></div>
     <div id="oauthBtns" class="oauth-btns"></div>
     <p class="auth-hint">Dein Konto schützt den Zugang zur App.<br />Deine Postfächer sind damit auf allen Geräten verfügbar.</p>
@@ -400,22 +430,46 @@ async function api(url,opts={}){
 }
 function handleUnauthorized(){forget(TKEY);forget(UKEY);showAuth()}
 let authMode='login';
+const AUTH_COPY={
+  login:{logo:'👋',title:'Willkommen zurück',sub:'Melde dich an, um deine Postfächer zu öffnen.',btn:'Anmelden',switch:'Noch kein Konto? <b id="switchLink">Jetzt registrieren</b>'},
+  register:{logo:'✨',title:'Konto erstellen',sub:'In wenigen Sekunden startklar – leg dir dein Konto an.',btn:'Konto erstellen',switch:'Schon ein Konto? <b id="switchLink">Hier anmelden</b>'}
+};
 function setAuthMode(mode){
   authMode=mode;
+  const c=AUTH_COPY[mode];
+  const card=$('authCard');
+  card.classList.toggle('mode-register',mode==='register');
+  card.classList.toggle('mode-login',mode==='login');
   $('tabLogin').classList.toggle('active',mode==='login');
   $('tabRegister').classList.toggle('active',mode==='register');
   $('authNameRow').classList.toggle('hidden',mode!=='register');
-  $('authSubmit').textContent=mode==='login'?'Anmelden':'Konto erstellen';
+  $('passHint').classList.toggle('hidden',mode!=='register');
+  $('authLogo').textContent=c.logo;
+  $('authTitle').textContent=c.title;
+  $('authSub').textContent=c.sub;
+  $('authSubmit').textContent=c.btn;
+  $('authSwitch').innerHTML=c.switch;
+  $('switchLink').onclick=()=>setAuthMode(mode==='login'?'register':'login');
   $('authPass').setAttribute('autocomplete',mode==='login'?'current-password':'new-password');
   $('authError').classList.add('hidden');
 }
 $('tabLogin').addEventListener('click',()=>setAuthMode('login'));
 $('tabRegister').addEventListener('click',()=>setAuthMode('register'));
+$('passToggle').addEventListener('click',()=>{
+  const i=$('authPass'),show=i.type==='password';
+  i.type=show?'text':'password';$('passToggle').textContent=show?'🙈':'👁';
+});
 function showAuthError(m){const el=$('authError');el.textContent=m;el.classList.remove('hidden')}
+function showAuthAction(m,label,fn){
+  const el=$('authError');el.innerHTML=esc(m)+' <a id="authErrAction">'+esc(label)+'</a>';
+  el.classList.remove('hidden');
+  $('authErrAction').onclick=fn;
+}
 $('authForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const email=$('authEmail').value.trim(),password=$('authPass').value,name=$('authName').value.trim();
   if(!email||!password)return showAuthError('Bitte E-Mail und Passwort ausfüllen.');
+  if(authMode==='register'&&password.length<6)return showAuthError('Das Passwort braucht mindestens 6 Zeichen.');
   const btn=$('authSubmit');btn.disabled=true;const oldText=btn.textContent;btn.textContent='Bitte warten …';
   try{
     const res=await fetch('/api/auth/'+(authMode==='login'?'login':'register'),{
@@ -423,13 +477,18 @@ $('authForm').addEventListener('submit',async e=>{
       body:JSON.stringify(authMode==='login'?{email,password}:{email,password,name})
     });
     const data=await res.json().catch(()=>({}));
-    if(!res.ok)throw new Error(data.error||('Fehler '+res.status));
+    if(!res.ok){
+      if(data.code==='not_registered')return showAuthAction(data.error,'Jetzt registrieren',()=>{setAuthMode('register');$('authPass').focus()});
+      if(data.code==='already_registered')return showAuthAction(data.error,'Zur Anmeldung',()=>{setAuthMode('login');$('authPass').focus()});
+      throw new Error(data.error||('Fehler '+res.status));
+    }
     remember(TKEY,data.token);remember(UKEY,JSON.stringify(data.user));
     $('authPass').value='';
     startApp(data.user);
   }catch(err){showAuthError(err.message)}
   finally{btn.disabled=false;btn.textContent=oldText}
 });
+setAuthMode('login');
 function showAuth(){
   $('appShell').classList.add('hidden');$('authView').classList.remove('hidden');
   if(pendingAuthError){showAuthError(pendingAuthError);pendingAuthError=null}

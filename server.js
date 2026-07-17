@@ -75,7 +75,7 @@ app.post('/api/auth/register', (req, res) => {
   if (!mail || !password) return res.status(400).json({ error: 'E-Mail und Passwort sind nötig.' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).json({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' });
   if (String(password).length < 6) return res.status(400).json({ error: 'Das Passwort braucht mindestens 6 Zeichen.' });
-  if (userDB.users.some((u) => u.email === mail)) return res.status(409).json({ error: 'Diese E-Mail ist bereits registriert – bitte anmelden.' });
+  if (userDB.users.some((u) => u.email === mail)) return res.status(409).json({ code: 'already_registered', error: 'Diese E-Mail ist bereits registriert – bitte melde dich an.' });
   const salt = crypto.randomBytes(16).toString('hex');
   const user = {
     id: crypto.randomUUID(),
@@ -93,16 +93,20 @@ app.post('/api/auth/register', (req, res) => {
 app.post('/api/auth/login', (req, res) => {
   const { email, password } = req.body || {};
   const mail = String(email || '').trim().toLowerCase();
+  if (!mail || !password) return res.status(400).json({ error: 'Bitte E-Mail und Passwort eingeben.' });
   const user = userDB.users.find((u) => u.email === mail);
-  if (!user || !password) return res.status(401).json({ error: 'E-Mail oder Passwort ist falsch.' });
+  // Konto gibt es noch nicht -> deutlicher Hinweis, dass zuerst registriert werden muss
+  if (!user) {
+    return res.status(404).json({ code: 'not_registered', error: 'Für diese E-Mail gibt es noch kein Konto. Bitte registriere dich zuerst.' });
+  }
   if (!user.salt || !user.hash) {
     const pName = (OAUTH_PROVIDERS[user.provider] && OAUTH_PROVIDERS[user.provider].name) || 'einen Anbieter';
-    return res.status(401).json({ error: `Dieses Konto ist mit ${pName} verknüpft – bitte den entsprechenden Anmelde-Button nutzen.` });
+    return res.status(401).json({ code: 'oauth_only', error: `Dieses Konto ist mit ${pName} verknüpft – bitte den entsprechenden Anmelde-Button nutzen.` });
   }
   const attempt = Buffer.from(hashPassword(String(password), user.salt));
   const stored = Buffer.from(user.hash);
   if (attempt.length !== stored.length || !crypto.timingSafeEqual(attempt, stored)) {
-    return res.status(401).json({ error: 'E-Mail oder Passwort ist falsch.' });
+    return res.status(401).json({ code: 'wrong_password', error: 'Das Passwort ist leider falsch. Bitte versuche es erneut.' });
   }
   res.json({ token: signToken(user.id), user: publicUser(user) });
 });
