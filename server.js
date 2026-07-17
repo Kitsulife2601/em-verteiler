@@ -17,6 +17,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 8080;
 
 const app = express();
+app.set('trust proxy', true); // hinter Render/Proxy: https und Host korrekt erkennen
 app.use(express.json({ limit: '1mb' }));
 
 // ---------------------------------------------------------------------------
@@ -94,6 +95,10 @@ app.post('/api/auth/login', (req, res) => {
   const mail = String(email || '').trim().toLowerCase();
   const user = userDB.users.find((u) => u.email === mail);
   if (!user || !password) return res.status(401).json({ error: 'E-Mail oder Passwort ist falsch.' });
+  if (!user.salt || !user.hash) {
+    const pName = (OAUTH_PROVIDERS[user.provider] && OAUTH_PROVIDERS[user.provider].name) || 'einen Anbieter';
+    return res.status(401).json({ error: `Dieses Konto ist mit ${pName} verknüpft – bitte den entsprechenden Anmelde-Button nutzen.` });
+  }
   const attempt = Buffer.from(hashPassword(String(password), user.salt));
   const stored = Buffer.from(user.hash);
   if (attempt.length !== stored.length || !crypto.timingSafeEqual(attempt, stored)) {
@@ -104,6 +109,128 @@ app.post('/api/auth/login', (req, res) => {
 
 app.get('/api/auth/me', requireAuth, (req, res) => {
   res.json(publicUser(req.user));
+});
+
+// ---------------------------------------------------------------------------
+// Anmeldung über Google & Co. (OAuth 2.0 / OpenID Connect)
+// Ein Anbieter wird automatisch aktiv, sobald seine Client-ID und sein
+// Client-Secret als Umgebungsvariablen gesetzt sind (Anleitung im README).
+// ---------------------------------------------------------------------------
+const OAUTH_PROVIDERS = {
+  google: {
+    name: 'Google',
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    authUrl: process.env.GOOGLE_AUTH_URL || 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: process.env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token',
+    userinfoUrl: process.env.GOOGLE_USERINFO_URL || 'https://openidconnect.googleapis.com/v1/userinfo',
+    scope: 'openid email profile',
+  },
+  microsoft: {
+    name: 'Microsoft',
+    clientId: process.env.MS_CLIENT_ID,
+    clientSecret: process.env.MS_CLIENT_SECRET,
+    authUrl: process.env.MS_AUTH_URL || 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: process.env.MS_TOKEN_URL || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userinfoUrl: process.env.MS_USERINFO_URL || 'https://graph.microsoft.com/oidc/userinfo',
+    scope: 'openid email profile',
+  },
+  yahoo: {
+    name: 'Yahoo',
+    clientId: process.env.YAHOO_CLIENT_ID,
+    clientSecret: process.env.YAHOO_CLIENT_SECRET,
+    authUrl: process.env.YAHOO_AUTH_URL || 'https://api.login.yahoo.com/oauth2/request_auth',
+    tokenUrl: process.env.YAHOO_TOKEN_URL || 'https://api.login.yahoo.com/oauth2/get_token',
+    userinfoUrl: process.env.YAHOO_USERINFO_URL || 'https://api.login.yahoo.com/openid/v1/userinfo',
+    scope: 'openid email profile',
+  },
+};
+function enabledProviders() {
+  return Object.entries(OAUTH_PROVIDERS).filter(([, p]) => p.clientId && p.clientSecret);
+}
+function baseUrl(req) {
+  return (process.env.BASE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
+}
+function oauthRedirectUri(req, providerId) {
+  return `${baseUrl(req)}/auth/${providerId}/callback`;
+}
+function makeOAuthState() {
+  const payload = Buffer.from(JSON.stringify({ n: crypto.randomBytes(8).toString('hex'), exp: Date.now() + 10 * 60 * 1000 })).toString('base64url');
+  const sig = crypto.createHmac('sha256', userDB.secret).update('state:' + payload).digest('base64url');
+  return `${payload}.${sig}`;
+}
+function checkOAuthState(state) {
+  if (typeof state !== 'string' || !state.includes('.')) return false;
+  const [payload, sig] = state.split('.');
+  const expected = crypto.createHmac('sha256', userDB.secret).update('state:' + payload).digest('base64url');
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
+  try { return JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')).exp > Date.now(); }
+  catch { return false; }
+}
+
+app.get('/api/auth/providers', (req, res) => {
+  res.json(enabledProviders().map(([id, p]) => ({ id, name: p.name })));
+});
+
+app.get('/auth/:provider', (req, res) => {
+  const p = OAUTH_PROVIDERS[req.params.provider];
+  if (!p || !p.clientId || !p.clientSecret) return res.redirect('/#autherror=' + encodeURIComponent('Dieser Anbieter ist nicht eingerichtet.'));
+  const params = new URLSearchParams({
+    client_id: p.clientId,
+    redirect_uri: oauthRedirectUri(req, req.params.provider),
+    response_type: 'code',
+    scope: p.scope,
+    state: makeOAuthState(),
+  });
+  res.redirect(`${p.authUrl}?${params}`);
+});
+
+app.get('/auth/:provider/callback', async (req, res) => {
+  const id = req.params.provider;
+  const p = OAUTH_PROVIDERS[id];
+  const fail = (msg) => res.redirect('/#autherror=' + encodeURIComponent(msg));
+  if (!p || !p.clientId || !p.clientSecret) return fail('Dieser Anbieter ist nicht eingerichtet.');
+  const { code, state, error } = req.query;
+  if (error) return fail('Anmeldung abgebrochen (' + error + ').');
+  if (!code || !checkOAuthState(state)) return fail('Ungültige Antwort vom Anbieter – bitte erneut versuchen.');
+  try {
+    const tokenRes = await fetch(p.tokenUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: p.clientId,
+        client_secret: p.clientSecret,
+        code: String(code),
+        grant_type: 'authorization_code',
+        redirect_uri: oauthRedirectUri(req, id),
+      }),
+    });
+    const tokens = await tokenRes.json().catch(() => ({}));
+    if (!tokenRes.ok || !tokens.access_token) throw new Error(tokens.error_description || tokens.error || 'Token-Austausch fehlgeschlagen');
+    const infoRes = await fetch(p.userinfoUrl, { headers: { Authorization: 'Bearer ' + tokens.access_token } });
+    const info = await infoRes.json().catch(() => ({}));
+    if (!infoRes.ok || !info.email) throw new Error('Der Anbieter hat keine E-Mail-Adresse geliefert.');
+    const mail = String(info.email).trim().toLowerCase();
+    let user = userDB.users.find((u) => u.email === mail);
+    if (!user) {
+      user = {
+        id: crypto.randomUUID(),
+        name: String(info.name || '').trim() || mail.split('@')[0],
+        email: mail,
+        provider: id,
+        createdAt: new Date().toISOString(),
+      };
+      userDB.users.push(user);
+      saveUserDB();
+    } else if (!user.provider) {
+      user.provider = id; // bestehendes Passwort-Konto mit dem Anbieter verknüpfen
+      saveUserDB();
+    }
+    res.redirect('/#token=' + encodeURIComponent(signToken(user.id)));
+  } catch (err) {
+    fail(`Anmeldung über ${p.name} fehlgeschlagen: ${err.message}`);
+  }
 });
 
 // ---------------------------------------------------------------------------

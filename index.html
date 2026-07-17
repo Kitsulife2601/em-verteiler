@@ -91,6 +91,16 @@ select option{background:#1a0d33;color:var(--text)}
 .btn-neon:active{transform:scale(.97)}
 .btn-neon:disabled{opacity:.6;cursor:default}
 .auth-hint{text-align:center;color:var(--muted);font-size:.75rem;margin:16px 0 0}
+.oauth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.78rem;margin:18px 0 14px}
+.oauth-divider::before,.oauth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.oauth-btns{display:flex;flex-direction:column;gap:10px}
+.oauth-btn{
+  display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;border-radius:14px;
+  border:1px solid var(--border);background:rgba(255,255,255,.05);color:var(--text);
+  font-size:.92rem;font-weight:600;text-decoration:none;transition:all .2s;
+}
+.oauth-btn:hover{box-shadow:var(--glow);border-color:var(--neon)}
+.oauth-btn svg{flex-shrink:0}
 
 /* ================= App-Layout ================= */
 .main{min-height:100vh;padding-bottom:env(safe-area-inset-bottom);transition:margin .28s ease}
@@ -263,6 +273,8 @@ select option{background:#1a0d33;color:var(--text)}
       <div id="authError" class="auth-error hidden"></div>
       <button id="authSubmit" class="btn-neon" type="submit">Anmelden</button>
     </form>
+    <div id="oauthDivider" class="oauth-divider hidden"><span>oder weiter mit</span></div>
+    <div id="oauthBtns" class="oauth-btns"></div>
     <p class="auth-hint">Dein Konto schützt den Zugang zur App.<br />Deine Postfächer sind damit auf allen Geräten verfügbar.</p>
   </div>
 </div>
@@ -368,6 +380,17 @@ function recall(k){try{return localStorage.getItem(k)}catch{return null}}
 function forget(k){try{localStorage.removeItem(k)}catch{}}
 
 // ---- Auth ----
+// Nach einem Google/Microsoft/Yahoo-Login kommt der Token per URL-Fragment zurück
+let pendingAuthError=null;
+(function(){
+  if(location.hash.startsWith('#token=')){
+    remember(TKEY,decodeURIComponent(location.hash.slice(7)));
+    history.replaceState(null,'',location.pathname);
+  }else if(location.hash.startsWith('#autherror=')){
+    pendingAuthError=decodeURIComponent(location.hash.slice(11));
+    history.replaceState(null,'',location.pathname);
+  }
+})();
 function token(){return recall(TKEY)}
 async function api(url,opts={}){
   opts.headers=Object.assign({},opts.headers||{},{Authorization:'Bearer '+(token()||'')});
@@ -407,7 +430,32 @@ $('authForm').addEventListener('submit',async e=>{
   }catch(err){showAuthError(err.message)}
   finally{btn.disabled=false;btn.textContent=oldText}
 });
-function showAuth(){$('appShell').classList.add('hidden');$('authView').classList.remove('hidden')}
+function showAuth(){
+  $('appShell').classList.add('hidden');$('authView').classList.remove('hidden');
+  if(pendingAuthError){showAuthError(pendingAuthError);pendingAuthError=null}
+}
+// Anmelde-Buttons für Google & Co. (nur eingerichtete Anbieter erscheinen)
+const OAUTH_ICONS={
+  google:'<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>',
+  microsoft:'<svg width="18" height="18" viewBox="0 0 23 23"><rect x="1" y="1" width="10" height="10" fill="#F25022"/><rect x="12" y="1" width="10" height="10" fill="#7FBA00"/><rect x="1" y="12" width="10" height="10" fill="#00A4EF"/><rect x="12" y="12" width="10" height="10" fill="#FFB900"/></svg>',
+  yahoo:'<svg width="18" height="18" viewBox="0 0 24 24"><rect width="24" height="24" rx="5" fill="#6001d2"/><text x="12" y="17" font-size="13" font-weight="bold" fill="#fff" text-anchor="middle" font-family="Arial,sans-serif">Y!</text></svg>'
+};
+async function loadProviders(){
+  try{
+    const res=await fetch('/api/auth/providers');
+    if(!res.ok)return;
+    const ps=await res.json();
+    if(!Array.isArray(ps)||!ps.length)return;
+    $('oauthDivider').classList.remove('hidden');
+    const box=$('oauthBtns');box.innerHTML='';
+    for(const p of ps){
+      const a=document.createElement('a');
+      a.className='oauth-btn';a.href='/auth/'+encodeURIComponent(p.id);
+      a.innerHTML=(OAUTH_ICONS[p.id]||'')+'<span>Weiter mit '+esc(p.name)+'</span>';
+      box.appendChild(a);
+    }
+  }catch{}
+}
 function renderUser(u){
   state.user=u;
   $('userName').textContent=u.name||u.email;
@@ -630,6 +678,7 @@ async function startApp(user){
 }
 (async function init(){
   await loadCategories().catch(()=>{});
+  loadProviders();
   const t=token();
   if(t){
     try{
