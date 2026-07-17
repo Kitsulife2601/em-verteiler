@@ -3,108 +3,297 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="theme-color" content="#1f6feb" />
+<meta name="theme-color" content="#0b0416" />
 <title>Handy-Mail</title>
 <link rel="manifest" href="/manifest.webmanifest" />
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9Jzk2JyBmaWxsPScjMWY2ZmViJy8+PHJlY3QgeD0nMTEyJyB5PScxNjgnIHdpZHRoPScyODgnIGhlaWdodD0nMTc2JyByeD0nMTYnIGZpbGw9J3doaXRlJy8+PHBhdGggZD0nTTEyMCAxODBsMTM2IDEwNCAxMzYtMTA0JyBmaWxsPSdub25lJyBzdHJva2U9JyMxZjZmZWInIHN0cm9rZS13aWR0aD0nMjInIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48L3N2Zz4=" />
 <style>
-:root{--bg:#f5f6f8;--card:#fff;--text:#1a1a1a;--muted:#6b7280;--accent:#1f6feb;--border:#e5e7eb;--unread:#eef4ff;--sidebar-bg:#fff;--sidebar-hover:#eef4ff;--sidebar-active:#dbe8ff}
-@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--border:#21262d;--unread:#12203a;--sidebar-bg:#0d1117;--sidebar-hover:#161b22;--sidebar-active:#1c2b47}}
+:root{
+  --bg:#0b0416;
+  --text:#ede9fe;
+  --muted:#9d8fc0;
+  --accent:#a855f7;
+  --accent2:#7c3aed;
+  --neon:#c084fc;
+  --border:rgba(168,85,247,.28);
+  --glass:rgba(24,12,48,.55);
+  --glass-strong:rgba(30,15,60,.7);
+  --hover:rgba(168,85,247,.14);
+  --active:rgba(168,85,247,.26);
+  --unread:rgba(168,85,247,.10);
+  --glow:0 0 18px rgba(168,85,247,.35);
+  --danger:#f87171;
+}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0;height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
-.main{min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
-.sidebar{position:fixed;top:0;left:0;bottom:0;width:270px;background:var(--sidebar-bg);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform .25s;z-index:40;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);overflow-y:auto}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color:var(--text);
+  background:var(--bg);
+  background-image:
+    radial-gradient(900px 600px at 85% -10%,rgba(124,58,237,.35),transparent 60%),
+    radial-gradient(700px 500px at -10% 30%,rgba(168,85,247,.22),transparent 60%),
+    radial-gradient(800px 700px at 50% 110%,rgba(88,28,135,.35),transparent 65%);
+  background-attachment:fixed;
+}
+.hidden{display:none!important}
+input,select,button{font-family:inherit}
+input,select{
+  width:100%;padding:12px 14px;border-radius:12px;font-size:.95rem;color:var(--text);
+  border:1px solid var(--border);background:rgba(255,255,255,.05);outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+input::placeholder{color:var(--muted)}
+input:focus,select:focus{border-color:var(--neon);box-shadow:0 0 0 3px rgba(168,85,247,.22),var(--glow)}
+select option{background:#1a0d33;color:var(--text)}
+.glass{
+  background:var(--glass);
+  backdrop-filter:blur(18px) saturate(150%);
+  -webkit-backdrop-filter:blur(18px) saturate(150%);
+  border:1px solid var(--border);
+}
+
+/* ================= Auth-Seite ================= */
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;padding-top:calc(24px + env(safe-area-inset-top))}
+.auth-card{
+  width:100%;max-width:420px;border-radius:24px;padding:32px 28px;
+  background:var(--glass);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+  border:1px solid var(--border);
+  box-shadow:0 0 40px rgba(124,58,237,.25),0 24px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);
+}
+.auth-logo{text-align:center;font-size:2.4rem;margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(168,85,247,.8))}
+.auth-title{
+  text-align:center;margin:0 0 4px;font-size:1.5rem;font-weight:800;letter-spacing:.02em;
+  background:linear-gradient(120deg,#e9d5ff,var(--neon) 45%,#8b5cf6);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  text-shadow:0 0 24px rgba(168,85,247,.35);
+}
+.auth-sub{text-align:center;color:var(--muted);font-size:.85rem;margin:0 0 22px}
+.auth-tabs{display:flex;gap:6px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:14px;padding:5px;margin-bottom:20px}
+.auth-tab{
+  flex:1;padding:10px;border:none;border-radius:10px;background:transparent;color:var(--muted);
+  font-size:.9rem;font-weight:600;cursor:pointer;transition:all .2s;
+}
+.auth-tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:var(--glow)}
+.auth-card label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:14px}
+.auth-card label input{margin-top:6px}
+.auth-error{
+  color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);
+  padding:10px 12px;border-radius:12px;font-size:.85rem;margin-bottom:14px;
+}
+.btn-neon{
+  width:100%;padding:13px;border:none;border-radius:14px;cursor:pointer;
+  font-size:1rem;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 100%);
+  box-shadow:0 0 22px rgba(168,85,247,.45),0 6px 18px rgba(0,0,0,.4);
+  transition:transform .15s,box-shadow .2s;
+}
+.btn-neon:hover{box-shadow:0 0 32px rgba(168,85,247,.65),0 6px 18px rgba(0,0,0,.4)}
+.btn-neon:active{transform:scale(.97)}
+.btn-neon:disabled{opacity:.6;cursor:default}
+.auth-hint{text-align:center;color:var(--muted);font-size:.75rem;margin:16px 0 0}
+
+/* ================= App-Layout ================= */
+.main{min-height:100vh;padding-bottom:env(safe-area-inset-bottom);transition:margin .28s ease}
+.sidebar{
+  position:fixed;top:0;left:0;bottom:0;width:272px;z-index:40;
+  background:var(--glass-strong);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+  border-right:1px solid var(--border);box-shadow:8px 0 40px rgba(0,0,0,.35);
+  transform:translateX(-100%);transition:transform .28s ease;
+  display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);overflow-y:auto;
+}
 .sidebar.open{transform:translateX(0)}
-.sidebar-head{padding:18px 18px 8px}.brand{font-size:1.15rem;font-weight:700}
+.sidebar-head{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 10px}
+.brand{font-size:1.12rem;font-weight:800;letter-spacing:.02em;
+  background:linear-gradient(120deg,#e9d5ff,var(--neon));-webkit-background-clip:text;background-clip:text;color:transparent}
+.sb-close{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:10px;font-size:1rem;cursor:pointer}
+.sb-close:hover{color:var(--text);box-shadow:var(--glow)}
 .accounts{padding:8px 10px;border-bottom:1px solid var(--border)}
-.accounts-label,.nav-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 8px}
+.accounts-label,.nav-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding:6px 8px}
 .account-list{list-style:none;margin:0;padding:0}
-.account-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;cursor:pointer}
-.account-item:hover{background:var(--sidebar-hover)}.account-item.active{background:var(--sidebar-active)}
-.account-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem}
-.account-text{overflow:hidden}.account-name{font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:12px;cursor:pointer;border:1px solid transparent;transition:background .15s}
+.account-item:hover{background:var(--hover)}
+.account-item.active{background:var(--active);border-color:var(--border);box-shadow:inset 0 0 14px rgba(168,85,247,.15)}
+.account-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem;box-shadow:0 0 10px rgba(168,85,247,.3)}
+.account-text{overflow:hidden}
+.account-name{font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .account-email{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .account-del{margin-left:auto;background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:4px}
-.add-account{width:100%;margin-top:6px;padding:9px;border:1px dashed var(--border);background:none;color:var(--accent);border-radius:10px;cursor:pointer;font-size:.88rem}
-.category-nav{padding:10px}
-.cat-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer;font-size:.95rem}
-.cat-item:hover{background:var(--sidebar-hover)}.cat-item.active{background:var(--sidebar-active);font-weight:600}
+.account-del:hover{color:var(--danger)}
+.add-account{width:100%;margin-top:6px;padding:10px;border:1px dashed var(--border);background:rgba(168,85,247,.06);color:var(--neon);border-radius:12px;cursor:pointer;font-size:.88rem;transition:all .2s}
+.add-account:hover{box-shadow:var(--glow);border-style:solid}
+.category-nav{padding:10px;flex:1}
+.cat-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:12px;cursor:pointer;font-size:.95rem;border:1px solid transparent;transition:background .15s}
+.cat-item:hover{background:var(--hover)}
+.cat-item.active{background:var(--active);font-weight:600;border-color:var(--border);box-shadow:inset 0 0 14px rgba(168,85,247,.15)}
 .cat-icon{font-size:1.1rem;width:22px;text-align:center}
-.cat-count{margin-left:auto;font-size:.78rem;color:var(--muted);background:var(--bg);padding:1px 8px;border-radius:10px}
-.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35}
-.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:14px 12px;padding-top:calc(14px + env(safe-area-inset-top));background:var(--accent);color:#fff}
-.topbar h1{font-size:1.1rem;font-weight:600;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.icon-btn{background:rgba(255,255,255,.15);border:none;color:#fff;width:40px;height:40px;border-radius:10px;font-size:1.35rem;line-height:1;cursor:pointer;flex-shrink:0}
+.cat-count{margin-left:auto;font-size:.75rem;color:var(--neon);background:rgba(168,85,247,.15);border:1px solid var(--border);padding:1px 8px;border-radius:10px}
+.sb-user{
+  border-top:1px solid var(--border);padding:12px 14px calc(12px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:10px;background:rgba(168,85,247,.06);
+}
+.sb-user .account-avatar{background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.logout-btn{margin-left:auto;background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--muted);padding:7px 10px;border-radius:10px;font-size:.78rem;cursor:pointer;flex-shrink:0}
+.logout-btn:hover{color:#fff;border-color:var(--danger);color:var(--danger)}
+.scrim{position:fixed;inset:0;background:rgba(5,0,15,.6);backdrop-filter:blur(2px);z-index:35}
+
+/* ================= Topbar & Inhalt ================= */
+.topbar{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;
+  padding:12px 12px;padding-top:calc(12px + env(safe-area-inset-top));
+  background:var(--glass);backdrop-filter:blur(18px) saturate(160%);-webkit-backdrop-filter:blur(18px) saturate(160%);
+  border-bottom:1px solid var(--border);box-shadow:0 6px 24px rgba(0,0,0,.3);
+}
+.topbar h1{font-size:1.1rem;font-weight:700;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  text-shadow:0 0 16px rgba(168,85,247,.5)}
+.icon-btn{
+  background:rgba(168,85,247,.14);border:1px solid var(--border);color:var(--neon);
+  width:40px;height:40px;border-radius:12px;font-size:1.3rem;line-height:1;cursor:pointer;flex-shrink:0;transition:all .2s;
+}
+.icon-btn:hover{box-shadow:var(--glow)}
 .icon-btn:active{transform:scale(.94)}
-.status{padding:10px 16px;font-size:.85rem;text-align:center;background:var(--card);border-bottom:1px solid var(--border);color:var(--muted)}
-.status.error{color:#b42318;background:#fff1f0}
-.view{min-height:60vh}.hidden{display:none!important}
-.tab-bar{position:sticky;top:calc(68px + env(safe-area-inset-top));z-index:15;display:flex;gap:6px;padding:8px 10px;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.status{padding:10px 16px;font-size:.85rem;text-align:center;background:rgba(168,85,247,.08);border-bottom:1px solid var(--border);color:var(--muted)}
+.status.error{color:#fecaca;background:rgba(248,113,113,.1)}
+.view{min-height:60vh}
+.tab-bar{
+  position:sticky;top:calc(64px + env(safe-area-inset-top));z-index:15;display:flex;gap:6px;padding:8px 10px;
+  background:rgba(11,4,22,.6);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;
+}
 .tab-bar::-webkit-scrollbar{display:none}
-.tab{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem;cursor:pointer;white-space:nowrap}
-.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
-.tab .tab-count{font-size:.72rem;background:rgba(0,0,0,.12);padding:0 6px;border-radius:999px}
+.tab{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;
+  border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);font-size:.85rem;cursor:pointer;white-space:nowrap;transition:all .2s;
+}
+.tab:hover{background:var(--hover)}
+.tab.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border-color:var(--neon);box-shadow:var(--glow)}
+.tab .tab-count{font-size:.72rem;background:rgba(168,85,247,.2);padding:0 6px;border-radius:999px}
 .tab.active .tab-count{background:rgba(255,255,255,.25)}
-.mail-list{list-style:none;margin:0;padding:0}
-.mail-item{display:flex;gap:12px;padding:13px 16px;background:var(--card);border-bottom:1px solid var(--border);cursor:pointer}
-.mail-item.unread{background:var(--unread)}.mail-item:active{opacity:.7}
-.avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem}
+.mail-list{list-style:none;margin:10px;padding:0;display:flex;flex-direction:column;gap:8px}
+.mail-item{
+  display:flex;gap:12px;padding:13px 14px;border-radius:16px;cursor:pointer;
+  background:var(--glass);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  border:1px solid rgba(168,85,247,.16);transition:border-color .2s,box-shadow .2s;
+}
+.mail-item:hover{border-color:var(--border);box-shadow:var(--glow)}
+.mail-item.unread{background:var(--unread);border-color:var(--border)}
+.mail-item.unread::before{content:'';align-self:center;width:7px;height:7px;margin-right:-6px;border-radius:50%;background:var(--neon);box-shadow:0 0 8px var(--neon);flex-shrink:0}
+.mail-item:active{opacity:.75}
+.avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;box-shadow:0 0 12px rgba(168,85,247,.35)}
 .mail-body{flex:1;min-width:0}
 .mail-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
 .mail-from{font-weight:600;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mail-item.unread .mail-from{font-weight:700}
 .mail-date{font-size:.75rem;color:var(--muted);flex-shrink:0}
-.mail-subject{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.mail-subject{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px;color:#cbc3e6}
 .mail-meta-row{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
-.mail-tag{display:inline-block;font-size:.68rem;padding:1px 7px;border-radius:8px;background:var(--sidebar-active);color:var(--accent)}
+.mail-tag{display:inline-block;font-size:.68rem;padding:1px 7px;border-radius:8px;background:rgba(168,85,247,.18);border:1px solid var(--border);color:var(--neon)}
 .mail-tag.manual::after{content:" ✎"}
 .acct-hint{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted)}
 .acct-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .empty{text-align:center;color:var(--muted);padding:60px 20px}
-.skeleton{padding:14px 16px;background:var(--card);border-bottom:1px solid var(--border)}
-.skeleton .bar{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--border),var(--bg),var(--border));background-size:200% 100%;animation:sh 1.2s infinite;margin:6px 0}
+.skeleton{padding:14px 16px;border-radius:16px;margin:0;background:var(--glass);border:1px solid rgba(168,85,247,.16)}
+.skeleton .bar{height:12px;border-radius:6px;background:linear-gradient(90deg,rgba(168,85,247,.1),rgba(168,85,247,.25),rgba(168,85,247,.1));background-size:200% 100%;animation:sh 1.2s infinite;margin:6px 0}
 .skeleton .bar.short{width:40%}
 @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.detail-head{padding:18px 16px;background:var(--card);border-bottom:1px solid var(--border)}
-.detail-head h2{margin:0 0 12px;font-size:1.25rem}
+.detail-head{margin:10px;padding:18px 16px;border-radius:16px;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--border)}
+.detail-head h2{margin:0 0 12px;font-size:1.25rem;text-shadow:0 0 16px rgba(168,85,247,.4)}
 .detail-from-row{display:flex;align-items:center;gap:12px}.detail-from-text{min-width:0}
 .d-from{font-weight:600;font-size:.95rem}.d-date{font-size:.8rem;color:var(--muted)}
 .cat-bar{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
 .cat-label{font-size:.82rem;color:var(--muted)}
-.cat-select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem}
+.cat-select{width:auto;padding:6px 10px;border-radius:10px;font-size:.85rem}
 .cat-hint{font-size:.75rem;color:var(--muted)}
-.detail-body{padding:4px 0;line-height:1.5;word-break:break-word}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;display:flex;align-items:flex-end;justify-content:center}
-.modal-card{background:var(--card);width:100%;max-width:460px;border-radius:18px 18px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto}
-@media(min-width:560px){.modal{align-items:center}.modal-card{border-radius:18px}}
-.modal-card h2{margin:0 0 6px;font-size:1.2rem}
+.detail-body{margin:0 10px 10px;padding:4px 0;line-height:1.5;word-break:break-word;background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--border)}
+.detail-body pre{color:#1a1a1a}
+
+/* ================= Modal (IMAP-Konto) ================= */
+.modal{position:fixed;inset:0;background:rgba(5,0,15,.65);backdrop-filter:blur(4px);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.modal-card{
+  width:100%;max-width:460px;border-radius:22px 22px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;
+  background:var(--glass-strong);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  border:1px solid var(--border);box-shadow:0 0 40px rgba(124,58,237,.3),0 -10px 40px rgba(0,0,0,.5);
+}
+@media(min-width:560px){.modal{align-items:center}.modal-card{border-radius:22px}}
+.modal-card h2{margin:0 0 6px;font-size:1.2rem;text-shadow:0 0 16px rgba(168,85,247,.4)}
 .modal-intro{font-size:.82rem;color:var(--muted);margin:0 0 14px}
 .modal-card label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:12px}
-.modal-card input,.modal-card select{width:100%;margin-top:5px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:.95rem}
+.modal-card input,.modal-card select{margin-top:5px}
 .row2{display:flex;gap:10px}.row2 label:first-child{flex:1}.row2 label:last-child{width:90px}
-.login-error{color:#b42318;background:#fff1f0;padding:10px 12px;border-radius:10px;font-size:.85rem;margin-bottom:12px}
+.login-error{color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.35);padding:10px 12px;border-radius:12px;font-size:.85rem;margin-bottom:12px}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
-.btn{padding:11px 18px;border-radius:10px;border:none;font-size:.92rem;cursor:pointer}
-.btn.ghost{background:var(--bg);color:var(--text)}.btn.primary{background:var(--accent);color:#fff}.btn:disabled{opacity:.6}
-@media(min-width:900px){.sidebar{transform:none}.scrim{display:none!important}.main{margin-left:270px}#menuBtn{display:none}}
+.btn{padding:11px 18px;border-radius:12px;border:none;font-size:.92rem;cursor:pointer;transition:all .2s}
+.btn.ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:var(--text)}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:var(--glow)}
+.btn.primary:hover{box-shadow:0 0 28px rgba(168,85,247,.6)}
+.btn:disabled{opacity:.6}
+
+/* ================= Desktop: Sidebar ein-/ausklappbar ================= */
+@media(min-width:900px){
+  .sidebar{transform:translateX(0)}
+  body.sb-collapsed .sidebar{transform:translateX(-100%);box-shadow:none}
+  .main{margin-left:272px}
+  body.sb-collapsed .main{margin-left:0}
+  .scrim{display:none!important}
+  .sb-close{display:none}
+}
 </style>
 </head>
 <body>
+
+<!-- ================= Anmeldeseite ================= -->
+<div id="authView" class="auth-wrap hidden">
+  <div class="auth-card">
+    <div class="auth-logo">📬</div>
+    <h1 class="auth-title">Handy-Mail</h1>
+    <p class="auth-sub">Melde dich an, um deine Postfächer zu öffnen.</p>
+    <div class="auth-tabs">
+      <button id="tabLogin" class="auth-tab active" type="button">Anmelden</button>
+      <button id="tabRegister" class="auth-tab" type="button">Registrieren</button>
+    </div>
+    <form id="authForm">
+      <label id="authNameRow" class="hidden">Name
+        <input id="authName" type="text" autocomplete="name" placeholder="Wie sollen wir dich nennen?" />
+      </label>
+      <label>E-Mail
+        <input id="authEmail" type="email" autocomplete="username" required placeholder="name@beispiel.de" />
+      </label>
+      <label>Passwort
+        <input id="authPass" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••" />
+      </label>
+      <div id="authError" class="auth-error hidden"></div>
+      <button id="authSubmit" class="btn-neon" type="submit">Anmelden</button>
+    </form>
+    <p class="auth-hint">Dein Konto schützt den Zugang zur App.<br />IMAP-Zugangsdaten bleiben weiterhin nur auf diesem Gerät.</p>
+  </div>
+</div>
+
+<!-- ================= App ================= -->
+<div id="appShell" class="hidden">
 <aside id="sidebar" class="sidebar">
-  <div class="sidebar-head"><span class="brand">📬 Handy-Mail</span></div>
+  <div class="sidebar-head">
+    <span class="brand">📬 Handy-Mail</span>
+    <button id="sbCloseBtn" class="sb-close" aria-label="Menü schließen">✕</button>
+  </div>
   <div class="accounts">
     <div class="accounts-label">Konten</div>
     <ul id="accountList" class="account-list"></ul>
     <button id="addAccountBtn" class="add-account">＋ Konto hinzufügen</button>
   </div>
   <nav id="categoryNav" class="category-nav"></nav>
+  <div class="sb-user">
+    <div id="userAvatar" class="account-avatar"></div>
+    <div class="account-text">
+      <div id="userName" class="account-name"></div>
+      <div id="userEmail" class="account-email"></div>
+    </div>
+    <button id="logoutBtn" class="logout-btn">Abmelden</button>
+  </div>
 </aside>
 <div id="scrim" class="scrim hidden"></div>
 
 <div class="main">
   <header class="topbar">
-    <button id="menuBtn" class="icon-btn" aria-label="Menü">☰</button>
+    <button id="menuBtn" class="icon-btn" aria-label="Menü ein-/ausklappen">☰</button>
     <button id="backBtn" class="icon-btn hidden" aria-label="Zurück">‹</button>
     <h1 id="title">Posteingang</h1>
     <button id="refreshBtn" class="icon-btn" aria-label="Aktualisieren">⟳</button>
@@ -161,12 +350,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
     </div>
   </div>
 </div>
+</div>
 
 <script>
 const $=id=>document.getElementById(id);
 const ALL='all';
-const AKEY='hm_accounts', OKEY='hm_overrides';
-const state={categories:[],accounts:[],activeAccount:ALL,activeCategory:'inbox',messages:[]};
+const AKEY='hm_accounts', OKEY='hm_overrides', TKEY='hm_token', UKEY='hm_user';
+const state={categories:[],accounts:[],activeAccount:ALL,activeCategory:'inbox',messages:[],user:null};
 
 // ---- localStorage ----
 function loadAccountsLS(){try{return JSON.parse(localStorage.getItem(AKEY))||[]}catch{return[]}}
@@ -175,21 +365,79 @@ function loadOverrides(){try{return JSON.parse(localStorage.getItem(OKEY))||{}}c
 function saveOverrides(o){try{localStorage.setItem(OKEY,JSON.stringify(o))}catch{}}
 function remember(k,v){try{localStorage.setItem(k,v)}catch{}}
 function recall(k){try{return localStorage.getItem(k)}catch{return null}}
+function forget(k){try{localStorage.removeItem(k)}catch{}}
+
+// ---- Auth ----
+function token(){return recall(TKEY)}
+async function api(url,opts={}){
+  opts.headers=Object.assign({},opts.headers||{},{Authorization:'Bearer '+(token()||'')});
+  const res=await fetch(url,opts);
+  if(res.status===401){handleUnauthorized();throw new Error('Bitte zuerst anmelden.')}
+  return res;
+}
+function handleUnauthorized(){forget(TKEY);forget(UKEY);showAuth()}
+let authMode='login';
+function setAuthMode(mode){
+  authMode=mode;
+  $('tabLogin').classList.toggle('active',mode==='login');
+  $('tabRegister').classList.toggle('active',mode==='register');
+  $('authNameRow').classList.toggle('hidden',mode!=='register');
+  $('authSubmit').textContent=mode==='login'?'Anmelden':'Konto erstellen';
+  $('authPass').setAttribute('autocomplete',mode==='login'?'current-password':'new-password');
+  $('authError').classList.add('hidden');
+}
+$('tabLogin').addEventListener('click',()=>setAuthMode('login'));
+$('tabRegister').addEventListener('click',()=>setAuthMode('register'));
+function showAuthError(m){const el=$('authError');el.textContent=m;el.classList.remove('hidden')}
+$('authForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const email=$('authEmail').value.trim(),password=$('authPass').value,name=$('authName').value.trim();
+  if(!email||!password)return showAuthError('Bitte E-Mail und Passwort ausfüllen.');
+  const btn=$('authSubmit');btn.disabled=true;const oldText=btn.textContent;btn.textContent='Bitte warten …';
+  try{
+    const res=await fetch('/api/auth/'+(authMode==='login'?'login':'register'),{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(authMode==='login'?{email,password}:{email,password,name})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok)throw new Error(data.error||('Fehler '+res.status));
+    remember(TKEY,data.token);remember(UKEY,JSON.stringify(data.user));
+    $('authPass').value='';
+    startApp(data.user);
+  }catch(err){showAuthError(err.message)}
+  finally{btn.disabled=false;btn.textContent=oldText}
+});
+function showAuth(){$('appShell').classList.add('hidden');$('authView').classList.remove('hidden')}
+function renderUser(u){
+  state.user=u;
+  $('userName').textContent=u.name||u.email;
+  $('userEmail').textContent=u.email;
+  $('userAvatar').textContent=initials(u.name||u.email);
+}
+$('logoutBtn').addEventListener('click',()=>{
+  forget(TKEY);forget(UKEY);
+  location.reload();
+});
 
 // ---- Helfer ----
 function esc(s){return(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function nameOnly(f){const m=/^(.*?)\s*<.*>$/.exec(f);return(m?m[1]:f).replace(/^"|"$/g,'').trim()||f}
 function initials(f){const p=nameOnly(f).split(/\s+/).filter(Boolean);return p.length?(p[0][0]+(p[1]?p[1][0]:'')).toUpperCase():'?'}
-function colorFor(s){let h=0;for(let i=0;i<(s||'').length;i++)h=s.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},55%,48%)`}
+function colorFor(s){let h=0;for(let i=0;i<(s||'').length;i++)h=s.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},60%,52%)`}
 function fmtDate(iso){const d=new Date(iso);if(isNaN(d))return'';const n=new Date();if(d.toDateString()===n.toDateString())return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});const y=new Date(n);y.setDate(n.getDate()-1);if(d.toDateString()===y.toDateString())return'Gestern';return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}
 function catById(id){return state.categories.find(c=>c.id===id)||{id,name:id,icon:'•'}}
 function msgKey(m){return m.accountId+':'+m.uid}
 function isUnified(){return state.activeAccount===ALL&&state.accounts.length>1}
 function setStatus(m,err){const s=$('status');if(!m){s.classList.add('hidden');return}s.textContent=m;s.classList.toggle('error',!!err);s.classList.remove('hidden')}
 
-// ---- Drawer/Views ----
+// ---- Sidebar (aufklappen / zuklappen) ----
+function isDesktop(){return window.innerWidth>=900}
 function openDrawer(){$('sidebar').classList.add('open');$('scrim').classList.remove('hidden')}
-function closeDrawer(){$('sidebar').classList.remove('open');$('scrim').classList.add('hidden')}
+function closeDrawer(){$('sidebar').classList.remove('open');if(!isDesktop())$('scrim').classList.add('hidden');else $('scrim').classList.add('hidden')}
+function toggleSidebar(){
+  if(isDesktop()){document.body.classList.toggle('sb-collapsed');return}
+  if($('sidebar').classList.contains('open'))closeDrawer();else openDrawer();
+}
 function titleFor(){if(state.activeAccount===ALL)return'Alle Konten';const a=state.accounts.find(x=>x.id===state.activeAccount);return a?(a.label||a.email):'Posteingang'}
 function showList(){$('detailView').classList.add('hidden');$('listView').classList.remove('hidden');$('tabBar').classList.remove('hidden');$('backBtn').classList.add('hidden');$('menuBtn').classList.remove('hidden');$('refreshBtn').classList.remove('hidden');$('title').textContent=titleFor()}
 function showDetail(){$('listView').classList.add('hidden');$('tabBar').classList.add('hidden');$('detailView').classList.remove('hidden');$('backBtn').classList.remove('hidden');$('menuBtn').classList.add('hidden');$('refreshBtn').classList.add('hidden');$('title').textContent='Nachricht';window.scrollTo(0,0)}
@@ -212,7 +460,7 @@ function renderAccounts(){
   if(state.accounts.length>1){
     const li=document.createElement('li');
     li.className='account-item'+(state.activeAccount===ALL?' active':'');
-    li.innerHTML=`<div class="account-avatar" style="background:#5b6570">∑</div><div class="account-text"><div class="account-name">Alle Konten</div><div class="account-email">gemeinsamer Posteingang</div></div>`;
+    li.innerHTML=`<div class="account-avatar" style="background:linear-gradient(135deg,#7c3aed,#a855f7)">∑</div><div class="account-text"><div class="account-name">Alle Konten</div><div class="account-email">gemeinsamer Posteingang</div></div>`;
     li.addEventListener('click',()=>switchAccount(ALL));ul.appendChild(li);
   }
   for(const a of state.accounts){
@@ -248,7 +496,7 @@ async function loadInbox(){
   if(!state.activeAccount){openLogin();return}
   setStatus('Lade Mails …');renderSkeleton();
   try{
-    const res=await fetch('/api/inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accounts:accountsForRequest(),limit:50})});
+    const res=await api('/api/inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accounts:accountsForRequest(),limit:50})});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||('Fehler '+res.status))}
     const data=await res.json();
     state.messages=decorate(data.messages||[]);
@@ -287,9 +535,9 @@ async function openMessage(m){
   $('dSubject').textContent='Lade …';$('dFrom').textContent='';$('dDate').textContent='';$('dAvatar').textContent='';$('dAvatar').style.background='transparent';$('dBody').innerHTML='';
   buildCatSelect(m);
   const acc=state.accounts.find(a=>a.id===m.accountId);
-  if(!acc){$('dBody').innerHTML='<p style="color:#b42318;padding:0 16px">Konto nicht gefunden.</p>';return}
+  if(!acc){$('dBody').innerHTML='<p style="color:#b42318;padding:16px">Konto nicht gefunden.</p>';return}
   try{
-    const res=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:acc,uid:m.uid,spam:m.box==='spam'})});
+    const res=await api('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:acc,uid:m.uid,spam:m.box==='spam'})});
     if(!res.ok)throw new Error('Fehler '+res.status);
     const full=await res.json();
     $('dSubject').textContent=full.subject||'(kein Betreff)';
@@ -298,13 +546,13 @@ async function openMessage(m){
     $('dDate').textContent=new Date(full.date).toLocaleString('de-DE');
     $('dAvatar').textContent=initials(full.from||m.from);$('dAvatar').style.background=colorFor(full.from||m.from);
     renderBody(full);
-  }catch(e){$('dBody').innerHTML=`<p style="color:#b42318;padding:0 16px">Konnte Nachricht nicht laden: ${esc(e.message)}</p>`}
+  }catch(e){$('dBody').innerHTML=`<p style="color:#b42318;padding:16px">Konnte Nachricht nicht laden: ${esc(e.message)}</p>`}
 }
 function renderBody(full){
   const b=$('dBody');
   if(full.html){
     const f=document.createElement('iframe');f.setAttribute('sandbox','allow-same-origin');f.style.width='100%';f.style.border='none';f.style.height='200px';
-    f.srcdoc=`<!DOCTYPE html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:-apple-system,sans-serif;color:#1a1a1a;margin:0;padding:16px;font-size:15px;line-height:1.5}img{max-width:100%;height:auto}a{color:#1f6feb}</style></head><body>${full.html}</body></html>`;
+    f.srcdoc=`<!DOCTYPE html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:-apple-system,sans-serif;color:#1a1a1a;margin:0;padding:16px;font-size:15px;line-height:1.5}img{max-width:100%;height:auto}a{color:#7c3aed}</style></head><body>${full.html}</body></html>`;
     const rz=()=>{try{f.style.height=f.contentWindow.document.body.scrollHeight+30+'px'}catch{}};
     f.addEventListener('load',()=>{rz();setTimeout(rz,300)});b.appendChild(f);
   }else{b.innerHTML=`<pre style="white-space:pre-wrap;font-family:inherit;padding:16px;margin:0">${esc(full.text||'(kein Inhalt)')}</pre>`}
@@ -326,13 +574,13 @@ function changeCategory(m,newCat){
   renderTabs();renderCategories();
 }
 
-// ---- Login ----
+// ---- IMAP-Konto hinzufügen ----
 const PROVIDERS={gmail:{host:'imap.gmail.com',port:993},gmx:{host:'imap.gmx.net',port:993},webde:{host:'imap.web.de',port:993},outlook:{host:'outlook.office365.com',port:993},yahoo:{host:'imap.mail.yahoo.com',port:993},custom:{host:'',port:993}};
 function openLogin(){$('loginModal').classList.remove('hidden')}
 function closeLogin(){$('loginModal').classList.add('hidden');$('loginError').classList.add('hidden')}
 $('provider').addEventListener('change',e=>{const p=PROVIDERS[e.target.value];if(p){$('fHost').value=p.host;$('fPort').value=p.port}});
 $('addAccountBtn').addEventListener('click',openLogin);
-$('loginCancel').addEventListener('click',()=>{if(state.accounts.length)closeLogin()});
+$('loginCancel').addEventListener('click',()=>closeLogin());
 $('loginSave').addEventListener('click',saveAccount);
 function uuid(){return(crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.round(Math.random()*1e6))}
 async function saveAccount(){
@@ -340,7 +588,7 @@ async function saveAccount(){
   if(!user||!pass||!host)return showLoginError('Bitte E-Mail, Passwort und Server ausfüllen.');
   const btn=$('loginSave');btn.disabled=true;btn.textContent='Verbinde …';
   try{
-    const res=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host,port,secure:true,user,pass})});
+    const res=await api('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host,port,secure:true,user,pass})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error||'Fehler');
     const accs=loadAccountsLS();
@@ -355,18 +603,33 @@ async function saveAccount(){
 function showLoginError(m){const el=$('loginError');el.textContent=m;el.classList.remove('hidden')}
 
 // ---- Verdrahtung ----
-$('menuBtn').addEventListener('click',openDrawer);
+$('menuBtn').addEventListener('click',toggleSidebar);
+$('sbCloseBtn').addEventListener('click',closeDrawer);
 $('scrim').addEventListener('click',closeDrawer);
 $('backBtn').addEventListener('click',showList);
 $('refreshBtn').addEventListener('click',loadInbox);
 
 // ---- Start ----
-(async function init(){
-  await loadCategories();
+function startApp(user){
+  $('authView').classList.add('hidden');
+  $('appShell').classList.remove('hidden');
+  renderUser(user);
   loadAccounts();
   renderTabs();renderCategories();
-  if(!state.activeAccount){openLogin();return}
+  if(!state.activeAccount){showList();openLogin();return}
   showList();loadInbox();
+}
+(async function init(){
+  await loadCategories().catch(()=>{});
+  const t=token();
+  if(t){
+    try{
+      const res=await fetch('/api/auth/me',{headers:{Authorization:'Bearer '+t}});
+      if(res.ok){startApp(await res.json());return}
+    }catch{}
+    forget(TKEY);forget(UKEY);
+  }
+  showAuth();
 })();
 if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
 </script>
