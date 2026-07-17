@@ -116,32 +116,43 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 // Ein Anbieter wird automatisch aktiv, sobald seine Client-ID und sein
 // Client-Secret als Umgebungsvariablen gesetzt sind (Anleitung im README).
 // ---------------------------------------------------------------------------
+// Umgebungsvariablen tolerant lesen: Groß-/Kleinschreibung und ein paar
+// gängige Schreibweisen (z. B. GOOGLE_CLIENT_ID, Google_Client_Id, GOOGLECLIENTID)
+// werden alle akzeptiert – das erspart Frust beim Eintragen im Hosting-Panel.
+function envAny(...names) {
+  const wanted = names.map((n) => n.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  for (const [key, val] of Object.entries(process.env)) {
+    if (val == null || val === '') continue;
+    if (wanted.includes(key.toLowerCase().replace(/[^a-z0-9]/g, ''))) return val;
+  }
+  return undefined;
+}
 const OAUTH_PROVIDERS = {
   google: {
     name: 'Google',
-    clientId: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    authUrl: process.env.GOOGLE_AUTH_URL || 'https://accounts.google.com/o/oauth2/v2/auth',
-    tokenUrl: process.env.GOOGLE_TOKEN_URL || 'https://oauth2.googleapis.com/token',
-    userinfoUrl: process.env.GOOGLE_USERINFO_URL || 'https://openidconnect.googleapis.com/v1/userinfo',
+    clientId: envAny('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENTID'),
+    clientSecret: envAny('GOOGLE_CLIENT_SECRET', 'GOOGLE_CLIENTSECRET'),
+    authUrl: envAny('GOOGLE_AUTH_URL') || 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: envAny('GOOGLE_TOKEN_URL') || 'https://oauth2.googleapis.com/token',
+    userinfoUrl: envAny('GOOGLE_USERINFO_URL') || 'https://openidconnect.googleapis.com/v1/userinfo',
     scope: 'openid email profile',
   },
   microsoft: {
     name: 'Microsoft',
-    clientId: process.env.MS_CLIENT_ID,
-    clientSecret: process.env.MS_CLIENT_SECRET,
-    authUrl: process.env.MS_AUTH_URL || 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: process.env.MS_TOKEN_URL || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    userinfoUrl: process.env.MS_USERINFO_URL || 'https://graph.microsoft.com/oidc/userinfo',
+    clientId: envAny('MS_CLIENT_ID', 'MICROSOFT_CLIENT_ID', 'MS_CLIENTID'),
+    clientSecret: envAny('MS_CLIENT_SECRET', 'MICROSOFT_CLIENT_SECRET', 'MS_CLIENTSECRET'),
+    authUrl: envAny('MS_AUTH_URL') || 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: envAny('MS_TOKEN_URL') || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userinfoUrl: envAny('MS_USERINFO_URL') || 'https://graph.microsoft.com/oidc/userinfo',
     scope: 'openid email profile',
   },
   yahoo: {
     name: 'Yahoo',
-    clientId: process.env.YAHOO_CLIENT_ID,
-    clientSecret: process.env.YAHOO_CLIENT_SECRET,
-    authUrl: process.env.YAHOO_AUTH_URL || 'https://api.login.yahoo.com/oauth2/request_auth',
-    tokenUrl: process.env.YAHOO_TOKEN_URL || 'https://api.login.yahoo.com/oauth2/get_token',
-    userinfoUrl: process.env.YAHOO_USERINFO_URL || 'https://api.login.yahoo.com/openid/v1/userinfo',
+    clientId: envAny('YAHOO_CLIENT_ID', 'YAHOO_CLIENTID'),
+    clientSecret: envAny('YAHOO_CLIENT_SECRET', 'YAHOO_CLIENTSECRET'),
+    authUrl: envAny('YAHOO_AUTH_URL') || 'https://api.login.yahoo.com/oauth2/request_auth',
+    tokenUrl: envAny('YAHOO_TOKEN_URL') || 'https://api.login.yahoo.com/oauth2/get_token',
+    userinfoUrl: envAny('YAHOO_USERINFO_URL') || 'https://api.login.yahoo.com/openid/v1/userinfo',
     scope: 'openid email profile',
   },
 };
