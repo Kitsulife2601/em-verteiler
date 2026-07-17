@@ -263,7 +263,7 @@ select option{background:#1a0d33;color:var(--text)}
       <div id="authError" class="auth-error hidden"></div>
       <button id="authSubmit" class="btn-neon" type="submit">Anmelden</button>
     </form>
-    <p class="auth-hint">Dein Konto schützt den Zugang zur App.<br />IMAP-Zugangsdaten bleiben weiterhin nur auf diesem Gerät.</p>
+    <p class="auth-hint">Dein Konto schützt den Zugang zur App.<br />Deine Postfächer sind damit auf allen Geräten verfügbar.</p>
   </div>
 </div>
 
@@ -324,7 +324,7 @@ select option{background:#1a0d33;color:var(--text)}
 <div id="loginModal" class="modal hidden">
   <div class="modal-card">
     <h2>Konto hinzufügen</h2>
-    <p class="modal-intro">Deine Zugangsdaten bleiben nur auf diesem Gerät gespeichert.</p>
+    <p class="modal-intro">Das Postfach wird sicher in deinem Konto gespeichert (Passwort verschlüsselt) und ist auf allen deinen Geräten verfügbar.</p>
     <label>Anbieter-Vorlage
       <select id="provider">
         <option value="">— auswählen —</option>
@@ -359,8 +359,8 @@ const AKEY='hm_accounts', OKEY='hm_overrides', TKEY='hm_token', UKEY='hm_user';
 const state={categories:[],accounts:[],activeAccount:ALL,activeCategory:'inbox',messages:[],user:null};
 
 // ---- localStorage ----
+// (hm_accounts wird nur noch für die einmalige Übernahme alter Konten gelesen)
 function loadAccountsLS(){try{return JSON.parse(localStorage.getItem(AKEY))||[]}catch{return[]}}
-function saveAccountsLS(a){try{localStorage.setItem(AKEY,JSON.stringify(a))}catch{}}
 function loadOverrides(){try{return JSON.parse(localStorage.getItem(OKEY))||{}}catch{return{}}}
 function saveOverrides(o){try{localStorage.setItem(OKEY,JSON.stringify(o))}catch{}}
 function remember(k,v){try{localStorage.setItem(k,v)}catch{}}
@@ -445,9 +445,20 @@ function showDetail(){$('listView').classList.add('hidden');$('tabBar').classLis
 // ---- Kategorien ----
 async function loadCategories(){state.categories=await(await fetch('/api/categories')).json()}
 
-// ---- Konten ----
-function loadAccounts(){
-  state.accounts=loadAccountsLS();
+// ---- Konten (liegen jetzt beim Benutzer auf dem Server) ----
+async function migrateLocalAccounts(){
+  const old=loadAccountsLS();
+  if(!old.length)return;
+  try{
+    const res=await api('/api/accounts/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accounts:old})});
+    if(res.ok)forget(AKEY);
+  }catch{}
+}
+async function loadAccounts(){
+  try{
+    const res=await api('/api/accounts');
+    state.accounts=res.ok?await res.json():[];
+  }catch{state.accounts=[]}
   const saved=recall('activeAccount');
   if(!state.accounts.length)state.activeAccount=null;
   else if(saved===ALL||!saved)state.activeAccount=ALL;
@@ -474,19 +485,21 @@ function renderAccounts(){
   }
 }
 function switchAccount(id){state.activeAccount=id;remember('activeAccount',id);state.activeCategory='inbox';renderAccounts();closeDrawer();loadInbox()}
-function removeAccount(id){
+async function removeAccount(id){
   if(!confirm('Dieses Konto wirklich entfernen?'))return;
-  const rest=loadAccountsLS().filter(a=>a.id!==id);saveAccountsLS(rest);
+  try{
+    const res=await api('/api/accounts/'+encodeURIComponent(id),{method:'DELETE'});
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||('Fehler '+res.status))}
+  }catch(e){setStatus('Konto konnte nicht entfernt werden: '+e.message,true);return}
   const ov=loadOverrides();for(const k of Object.keys(ov))if(k.startsWith(id+':'))delete ov[k];saveOverrides(ov);
-  loadAccounts();
+  await loadAccounts();
   if(!state.accounts.length){openLogin();$('mailList').innerHTML='';renderTabs();renderCategories();return}
   loadInbox();
 }
 
 // ---- Posteingang ----
-function accountsForRequest(){
-  if(state.activeAccount===ALL)return state.accounts;
-  const a=state.accounts.find(x=>x.id===state.activeAccount);return a?[a]:[];
+function accountIdsForRequest(){
+  return state.activeAccount===ALL?null:[state.activeAccount];
 }
 function decorate(messages){
   const ov=loadOverrides();
@@ -496,7 +509,7 @@ async function loadInbox(){
   if(!state.activeAccount){openLogin();return}
   setStatus('Lade Mails …');renderSkeleton();
   try{
-    const res=await api('/api/inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accounts:accountsForRequest(),limit:50})});
+    const res=await api('/api/inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountIds:accountIdsForRequest(),limit:50})});
     if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||('Fehler '+res.status))}
     const data=await res.json();
     state.messages=decorate(data.messages||[]);
@@ -534,10 +547,8 @@ async function openMessage(m){
   showDetail();
   $('dSubject').textContent='Lade …';$('dFrom').textContent='';$('dDate').textContent='';$('dAvatar').textContent='';$('dAvatar').style.background='transparent';$('dBody').innerHTML='';
   buildCatSelect(m);
-  const acc=state.accounts.find(a=>a.id===m.accountId);
-  if(!acc){$('dBody').innerHTML='<p style="color:#b42318;padding:16px">Konto nicht gefunden.</p>';return}
   try{
-    const res=await api('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:acc,uid:m.uid,spam:m.box==='spam'})});
+    const res=await api('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accountId:m.accountId,uid:m.uid,spam:m.box==='spam'})});
     if(!res.ok)throw new Error('Fehler '+res.status);
     const full=await res.json();
     $('dSubject').textContent=full.subject||'(kein Betreff)';
@@ -582,21 +593,17 @@ $('provider').addEventListener('change',e=>{const p=PROVIDERS[e.target.value];if
 $('addAccountBtn').addEventListener('click',openLogin);
 $('loginCancel').addEventListener('click',()=>closeLogin());
 $('loginSave').addEventListener('click',saveAccount);
-function uuid(){return(crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.round(Math.random()*1e6))}
 async function saveAccount(){
   const user=$('fUser').value.trim(),pass=$('fPass').value,host=$('fHost').value.trim(),port=Number($('fPort').value)||993,label=$('fLabel').value.trim();
   if(!user||!pass||!host)return showLoginError('Bitte E-Mail, Passwort und Server ausfüllen.');
   const btn=$('loginSave');btn.disabled=true;btn.textContent='Verbinde …';
   try{
-    const res=await api('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host,port,secure:true,user,pass})});
+    const res=await api('/api/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({label,user,pass,host,port})});
     const data=await res.json();
     if(!res.ok)throw new Error(data.error||'Fehler');
-    const accs=loadAccountsLS();
-    const rec={id:uuid(),label:label||user,email:user,host,port,secure:true,user,pass};
-    accs.push(rec);saveAccountsLS(accs);
     closeLogin();['fLabel','fUser','fPass','fHost'].forEach(id=>$(id).value='');$('provider').value='';
-    loadAccounts();
-    state.activeAccount=state.accounts.length>1?ALL:rec.id;remember('activeAccount',state.activeAccount);
+    await loadAccounts();
+    state.activeAccount=state.accounts.length>1?ALL:data.id;remember('activeAccount',state.activeAccount);
     renderAccounts();loadInbox();
   }catch(e){showLoginError(e.message)}finally{btn.disabled=false;btn.textContent='Verbinden & speichern'}
 }
@@ -610,14 +617,16 @@ $('backBtn').addEventListener('click',showList);
 $('refreshBtn').addEventListener('click',loadInbox);
 
 // ---- Start ----
-function startApp(user){
+async function startApp(user){
   $('authView').classList.add('hidden');
   $('appShell').classList.remove('hidden');
   renderUser(user);
-  loadAccounts();
   renderTabs();renderCategories();
-  if(!state.activeAccount){showList();openLogin();return}
-  showList();loadInbox();
+  showList();
+  await migrateLocalAccounts();
+  await loadAccounts();
+  if(!state.activeAccount){openLogin();return}
+  loadInbox();
 }
 (async function init(){
   await loadCategories().catch(()=>{});

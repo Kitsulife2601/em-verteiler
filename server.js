@@ -107,6 +107,90 @@ app.get('/api/auth/me', requireAuth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// IMAP-Konten pro Benutzer (liegen beim Benutzer in users.json,
+// Passwörter verschlüsselt mit AES-256-GCM, damit sie nicht im Klartext stehen)
+// ---------------------------------------------------------------------------
+function accountKey() {
+  return crypto.createHash('sha256').update('accounts:' + userDB.secret).digest();
+}
+function encryptSecret(text) {
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', accountKey(), iv);
+  const data = Buffer.concat([cipher.update(String(text), 'utf8'), cipher.final()]);
+  return { iv: iv.toString('hex'), tag: cipher.getAuthTag().toString('hex'), data: data.toString('hex') };
+}
+function decryptSecret(enc) {
+  const decipher = crypto.createDecipheriv('aes-256-gcm', accountKey(), Buffer.from(enc.iv, 'hex'));
+  decipher.setAuthTag(Buffer.from(enc.tag, 'hex'));
+  return Buffer.concat([decipher.update(Buffer.from(enc.data, 'hex')), decipher.final()]).toString('utf8');
+}
+function userAccounts(u) { if (!Array.isArray(u.accounts)) u.accounts = []; return u.accounts; }
+function accountPublic(a) {
+  return { id: a.id, label: a.label, email: a.email, host: a.host, port: a.port, secure: a.secure };
+}
+function accountFull(a) {
+  return { ...accountPublic(a), user: a.user, pass: decryptSecret(a.passEnc) };
+}
+function buildAccount({ label, email, user, pass, host, port, secure }) {
+  return {
+    id: crypto.randomUUID(),
+    label: String(label || '').trim() || user,
+    email: String(email || user).trim(),
+    host: String(host).trim(),
+    port: Number(port) || 993,
+    secure: secure !== false,
+    user: String(user).trim(),
+    passEnc: encryptSecret(pass),
+  };
+}
+
+app.get('/api/accounts', requireAuth, (req, res) => {
+  res.json(userAccounts(req.user).map(accountPublic));
+});
+
+// Konto hinzufügen: Verbindung wird erst getestet, dann gespeichert
+app.post('/api/accounts', requireAuth, async (req, res) => {
+  const { label, user, pass, host, port } = req.body || {};
+  if (!user || !pass || !host) return res.status(400).json({ error: 'Host, Benutzer und Passwort nötig.' });
+  const client = clientFor({ host, port, secure: true, user, pass });
+  try {
+    await client.connect();
+    await client.logout();
+  } catch (err) {
+    try { await client.logout(); } catch {}
+    return res.status(401).json({ error: 'Anmeldung fehlgeschlagen: ' + err.message });
+  }
+  const rec = buildAccount({ label, user, pass, host, port, secure: true });
+  userAccounts(req.user).push(rec);
+  saveUserDB();
+  res.json(accountPublic(rec));
+});
+
+// Einmalige Übernahme früher im Browser gespeicherter Konten
+app.post('/api/accounts/import', requireAuth, (req, res) => {
+  const list = Array.isArray(req.body?.accounts) ? req.body.accounts : [];
+  const accounts = userAccounts(req.user);
+  let added = 0;
+  for (const a of list) {
+    if (!a || !a.user || !a.pass || !a.host) continue;
+    if (accounts.some((x) => x.user === a.user && x.host === a.host)) continue;
+    accounts.push(buildAccount(a));
+    added++;
+  }
+  if (added) saveUserDB();
+  res.json({ added, accounts: accounts.map(accountPublic) });
+});
+
+app.delete('/api/accounts/:id', requireAuth, (req, res) => {
+  const accounts = userAccounts(req.user);
+  const idx = accounts.findIndex((a) => a.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Konto nicht gefunden.' });
+  accounts.splice(idx, 1);
+  saveUserDB();
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
 // Kategorien + automatische Erkennung
 // ---------------------------------------------------------------------------
 const CATEGORIES = [
@@ -195,23 +279,12 @@ app.get('/api/categories', (req, res) => {
   res.json(CATEGORIES.map(({ keywords, ...c }) => c));
 });
 
-// Verbindung testen (beim Konto-Hinzufügen)
-app.post('/api/test', requireAuth, async (req, res) => {
-  const { host, port, secure, user, pass } = req.body || {};
-  if (!host || !user || !pass) return res.status(400).json({ error: 'Host, Benutzer und Passwort nötig.' });
-  const client = clientFor({ host, port, secure, user, pass });
-  try {
-    await client.connect();
-    await client.logout();
-    res.json({ ok: true });
-  } catch (err) {
-    res.status(401).json({ error: 'Anmeldung fehlgeschlagen: ' + err.message });
-  }
-});
-
-// Posteingang (ein oder mehrere Konten) – parallel, fehlertolerant
+// Posteingang (ein oder mehrere Konten) – parallel, fehlertolerant.
+// Der Browser schickt nur noch Konto-IDs, die Zugangsdaten liegen beim Benutzer.
 app.post('/api/inbox', requireAuth, async (req, res) => {
-  const accounts = Array.isArray(req.body?.accounts) ? req.body.accounts : [];
+  const all = userAccounts(req.user);
+  const ids = Array.isArray(req.body?.accountIds) ? req.body.accountIds : null;
+  const accounts = (ids ? all.filter((a) => ids.includes(a.id)) : all).map(accountFull);
   const limit = Math.min(Number(req.body?.limit) || 40, 100);
   if (!accounts.length) return res.json({ messages: [], errors: [] });
 
@@ -228,9 +301,10 @@ app.post('/api/inbox', requireAuth, async (req, res) => {
 
 // einzelne Mail mit vollem Inhalt
 app.post('/api/message', requireAuth, async (req, res) => {
-  const { account, uid, spam } = req.body || {};
-  if (!account || !uid) return res.status(400).json({ error: 'account und uid nötig.' });
-  const client = clientFor(account);
+  const { accountId, uid, spam } = req.body || {};
+  const stored = userAccounts(req.user).find((a) => a.id === accountId);
+  if (!stored || !uid) return res.status(400).json({ error: 'accountId und uid nötig.' });
+  const client = clientFor(accountFull(stored));
   try {
     await client.connect();
     let mailboxPath = 'INBOX';
