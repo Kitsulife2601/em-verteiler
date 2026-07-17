@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1f6feb" />
+<title>Handy-Mail</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc1MTInIGhlaWdodD0nNTEyJz48cmVjdCB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9Jzk2JyBmaWxsPScjMWY2ZmViJy8+PHJlY3QgeD0nMTEyJyB5PScxNjgnIHdpZHRoPScyODgnIGhlaWdodD0nMTc2JyByeD0nMTYnIGZpbGw9J3doaXRlJy8+PHBhdGggZD0nTTEyMCAxODBsMTM2IDEwNCAxMzYtMTA0JyBmaWxsPSdub25lJyBzdHJva2U9JyMxZjZmZWInIHN0cm9rZS13aWR0aD0nMjInIHN0cm9rZS1saW5lam9pbj0ncm91bmQnLz48L3N2Zz4=" />
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--text:#1a1a1a;--muted:#6b7280;--accent:#1f6feb;--border:#e5e7eb;--unread:#eef4ff;--sidebar-bg:#fff;--sidebar-hover:#eef4ff;--sidebar-active:#dbe8ff}
+@media(prefers-color-scheme:dark){:root{--bg:#0d1117;--card:#161b22;--text:#e6edf3;--muted:#8b949e;--accent:#388bfd;--border:#21262d;--unread:#12203a;--sidebar-bg:#0d1117;--sidebar-hover:#161b22;--sidebar-active:#1c2b47}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+.main{min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+.sidebar{position:fixed;top:0;left:0;bottom:0;width:270px;background:var(--sidebar-bg);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform .25s;z-index:40;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);overflow-y:auto}
+.sidebar.open{transform:translateX(0)}
+.sidebar-head{padding:18px 18px 8px}.brand{font-size:1.15rem;font-weight:700}
+.accounts{padding:8px 10px;border-bottom:1px solid var(--border)}
+.accounts-label,.nav-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);padding:6px 8px}
+.account-list{list-style:none;margin:0;padding:0}
+.account-item{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;cursor:pointer}
+.account-item:hover{background:var(--sidebar-hover)}.account-item.active{background:var(--sidebar-active)}
+.account-avatar{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:.85rem}
+.account-text{overflow:hidden}.account-name{font-size:.9rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-email{font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.account-del{margin-left:auto;background:none;border:none;color:var(--muted);font-size:1rem;cursor:pointer;padding:4px}
+.add-account{width:100%;margin-top:6px;padding:9px;border:1px dashed var(--border);background:none;color:var(--accent);border-radius:10px;cursor:pointer;font-size:.88rem}
+.category-nav{padding:10px}
+.cat-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;cursor:pointer;font-size:.95rem}
+.cat-item:hover{background:var(--sidebar-hover)}.cat-item.active{background:var(--sidebar-active);font-weight:600}
+.cat-icon{font-size:1.1rem;width:22px;text-align:center}
+.cat-count{margin-left:auto;font-size:.78rem;color:var(--muted);background:var(--bg);padding:1px 8px;border-radius:10px}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:35}
+.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:8px;padding:14px 12px;padding-top:calc(14px + env(safe-area-inset-top));background:var(--accent);color:#fff}
+.topbar h1{font-size:1.1rem;font-weight:600;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{background:rgba(255,255,255,.15);border:none;color:#fff;width:40px;height:40px;border-radius:10px;font-size:1.35rem;line-height:1;cursor:pointer;flex-shrink:0}
+.icon-btn:active{transform:scale(.94)}
+.status{padding:10px 16px;font-size:.85rem;text-align:center;background:var(--card);border-bottom:1px solid var(--border);color:var(--muted)}
+.status.error{color:#b42318;background:#fff1f0}
+.view{min-height:60vh}.hidden{display:none!important}
+.tab-bar{position:sticky;top:calc(68px + env(safe-area-inset-top));z-index:15;display:flex;gap:6px;padding:8px 10px;background:var(--card);border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem;cursor:pointer;white-space:nowrap}
+.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tab .tab-count{font-size:.72rem;background:rgba(0,0,0,.12);padding:0 6px;border-radius:999px}
+.tab.active .tab-count{background:rgba(255,255,255,.25)}
+.mail-list{list-style:none;margin:0;padding:0}
+.mail-item{display:flex;gap:12px;padding:13px 16px;background:var(--card);border-bottom:1px solid var(--border);cursor:pointer}
+.mail-item.unread{background:var(--unread)}.mail-item:active{opacity:.7}
+.avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem}
+.mail-body{flex:1;min-width:0}
+.mail-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.mail-from{font-weight:600;font-size:.95rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mail-item.unread .mail-from{font-weight:700}
+.mail-date{font-size:.75rem;color:var(--muted);flex-shrink:0}
+.mail-subject{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.mail-meta-row{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
+.mail-tag{display:inline-block;font-size:.68rem;padding:1px 7px;border-radius:8px;background:var(--sidebar-active);color:var(--accent)}
+.mail-tag.manual::after{content:" ✎"}
+.acct-hint{display:inline-flex;align-items:center;gap:5px;font-size:.7rem;color:var(--muted)}
+.acct-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.empty{text-align:center;color:var(--muted);padding:60px 20px}
+.skeleton{padding:14px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.skeleton .bar{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--border),var(--bg),var(--border));background-size:200% 100%;animation:sh 1.2s infinite;margin:6px 0}
+.skeleton .bar.short{width:40%}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.detail-head{padding:18px 16px;background:var(--card);border-bottom:1px solid var(--border)}
+.detail-head h2{margin:0 0 12px;font-size:1.25rem}
+.detail-from-row{display:flex;align-items:center;gap:12px}.detail-from-text{min-width:0}
+.d-from{font-weight:600;font-size:.95rem}.d-date{font-size:.8rem;color:var(--muted)}
+.cat-bar{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+.cat-label{font-size:.82rem;color:var(--muted)}
+.cat-select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:.85rem}
+.cat-hint{font-size:.75rem;color:var(--muted)}
+.detail-body{padding:4px 0;line-height:1.5;word-break:break-word}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.modal-card{background:var(--card);width:100%;max-width:460px;border-radius:18px 18px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto}
+@media(min-width:560px){.modal{align-items:center}.modal-card{border-radius:18px}}
+.modal-card h2{margin:0 0 6px;font-size:1.2rem}
+.modal-intro{font-size:.82rem;color:var(--muted);margin:0 0 14px}
+.modal-card label{display:block;font-size:.82rem;color:var(--muted);margin-bottom:12px}
+.modal-card input,.modal-card select{width:100%;margin-top:5px;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:.95rem}
+.row2{display:flex;gap:10px}.row2 label:first-child{flex:1}.row2 label:last-child{width:90px}
+.login-error{color:#b42318;background:#fff1f0;padding:10px 12px;border-radius:10px;font-size:.85rem;margin-bottom:12px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:6px}
+.btn{padding:11px 18px;border-radius:10px;border:none;font-size:.92rem;cursor:pointer}
+.btn.ghost{background:var(--bg);color:var(--text)}.btn.primary{background:var(--accent);color:#fff}.btn:disabled{opacity:.6}
+@media(min-width:900px){.sidebar{transform:none}.scrim{display:none!important}.main{margin-left:270px}#menuBtn{display:none}}
+</style>
+</head>
+<body>
+<aside id="sidebar" class="sidebar">
+  <div class="sidebar-head"><span class="brand">📬 Handy-Mail</span></div>
+  <div class="accounts">
+    <div class="accounts-label">Konten</div>
+    <ul id="accountList" class="account-list"></ul>
+    <button id="addAccountBtn" class="add-account">＋ Konto hinzufügen</button>
+  </div>
+  <nav id="categoryNav" class="category-nav"></nav>
+</aside>
+<div id="scrim" class="scrim hidden"></div>
+
+<div class="main">
+  <header class="topbar">
+    <button id="menuBtn" class="icon-btn" aria-label="Menü">☰</button>
+    <button id="backBtn" class="icon-btn hidden" aria-label="Zurück">‹</button>
+    <h1 id="title">Posteingang</h1>
+    <button id="refreshBtn" class="icon-btn" aria-label="Aktualisieren">⟳</button>
+  </header>
+  <div id="status" class="status hidden"></div>
+  <div id="tabBar" class="tab-bar"></div>
+  <main id="listView" class="view">
+    <ul id="mailList" class="mail-list"></ul>
+    <div id="emptyState" class="empty hidden">Keine Nachrichten in dieser Kategorie.</div>
+  </main>
+  <main id="detailView" class="view hidden">
+    <div class="detail-head">
+      <h2 id="dSubject"></h2>
+      <div class="detail-from-row">
+        <div id="dAvatar" class="avatar"></div>
+        <div class="detail-from-text"><div id="dFrom" class="d-from"></div><div id="dDate" class="d-date"></div></div>
+      </div>
+      <div class="cat-bar">
+        <span class="cat-label">Kategorie:</span>
+        <select id="catSelect" class="cat-select"></select>
+        <span id="catHint" class="cat-hint"></span>
+      </div>
+    </div>
+    <div id="dBody" class="detail-body"></div>
+  </main>
+</div>
+
+<div id="loginModal" class="modal hidden">
+  <div class="modal-card">
+    <h2>Konto hinzufügen</h2>
+    <p class="modal-intro">Deine Zugangsdaten bleiben nur auf diesem Gerät gespeichert.</p>
+    <label>Anbieter-Vorlage
+      <select id="provider">
+        <option value="">— auswählen —</option>
+        <option value="gmail">Gmail</option>
+        <option value="gmx">GMX</option>
+        <option value="webde">Web.de</option>
+        <option value="outlook">Outlook / Office365</option>
+        <option value="yahoo">Yahoo</option>
+        <option value="custom">Anderer (manuell)</option>
+      </select>
+    </label>
+    <label>Anzeigename (frei wählbar)<input id="fLabel" type="text" placeholder="z. B. Privat" /></label>
+    <label>E-Mail / Benutzer<input id="fUser" type="email" autocomplete="username" placeholder="name@anbieter.de" /></label>
+    <label>Passwort <small>(Gmail/Yahoo: App-Passwort)</small><input id="fPass" type="password" autocomplete="current-password" /></label>
+    <div class="row2">
+      <label>IMAP-Server<input id="fHost" type="text" placeholder="imap.anbieter.de" /></label>
+      <label>Port<input id="fPort" type="number" value="993" /></label>
+    </div>
+    <div id="loginError" class="login-error hidden"></div>
+    <div class="modal-actions">
+      <button id="loginCancel" class="btn ghost">Abbrechen</button>
+      <button id="loginSave" class="btn primary">Verbinden &amp; speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const ALL='all';
+const AKEY='hm_accounts', OKEY='hm_overrides';
+const state={categories:[],accounts:[],activeAccount:ALL,activeCategory:'inbox',messages:[]};
+
+// ---- localStorage ----
+function loadAccountsLS(){try{return JSON.parse(localStorage.getItem(AKEY))||[]}catch{return[]}}
+function saveAccountsLS(a){try{localStorage.setItem(AKEY,JSON.stringify(a))}catch{}}
+function loadOverrides(){try{return JSON.parse(localStorage.getItem(OKEY))||{}}catch{return{}}}
+function saveOverrides(o){try{localStorage.setItem(OKEY,JSON.stringify(o))}catch{}}
+function remember(k,v){try{localStorage.setItem(k,v)}catch{}}
+function recall(k){try{return localStorage.getItem(k)}catch{return null}}
+
+// ---- Helfer ----
+function esc(s){return(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function nameOnly(f){const m=/^(.*?)\s*<.*>$/.exec(f);return(m?m[1]:f).replace(/^"|"$/g,'').trim()||f}
+function initials(f){const p=nameOnly(f).split(/\s+/).filter(Boolean);return p.length?(p[0][0]+(p[1]?p[1][0]:'')).toUpperCase():'?'}
+function colorFor(s){let h=0;for(let i=0;i<(s||'').length;i++)h=s.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},55%,48%)`}
+function fmtDate(iso){const d=new Date(iso);if(isNaN(d))return'';const n=new Date();if(d.toDateString()===n.toDateString())return d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});const y=new Date(n);y.setDate(n.getDate()-1);if(d.toDateString()===y.toDateString())return'Gestern';return d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}
+function catById(id){return state.categories.find(c=>c.id===id)||{id,name:id,icon:'•'}}
+function msgKey(m){return m.accountId+':'+m.uid}
+function isUnified(){return state.activeAccount===ALL&&state.accounts.length>1}
+function setStatus(m,err){const s=$('status');if(!m){s.classList.add('hidden');return}s.textContent=m;s.classList.toggle('error',!!err);s.classList.remove('hidden')}
+
+// ---- Drawer/Views ----
+function openDrawer(){$('sidebar').classList.add('open');$('scrim').classList.remove('hidden')}
+function closeDrawer(){$('sidebar').classList.remove('open');$('scrim').classList.add('hidden')}
+function titleFor(){if(state.activeAccount===ALL)return'Alle Konten';const a=state.accounts.find(x=>x.id===state.activeAccount);return a?(a.label||a.email):'Posteingang'}
+function showList(){$('detailView').classList.add('hidden');$('listView').classList.remove('hidden');$('tabBar').classList.remove('hidden');$('backBtn').classList.add('hidden');$('menuBtn').classList.remove('hidden');$('refreshBtn').classList.remove('hidden');$('title').textContent=titleFor()}
+function showDetail(){$('listView').classList.add('hidden');$('tabBar').classList.add('hidden');$('detailView').classList.remove('hidden');$('backBtn').classList.remove('hidden');$('menuBtn').classList.add('hidden');$('refreshBtn').classList.add('hidden');$('title').textContent='Nachricht';window.scrollTo(0,0)}
+
+// ---- Kategorien ----
+async function loadCategories(){state.categories=await(await fetch('/api/categories')).json()}
+
+// ---- Konten ----
+function loadAccounts(){
+  state.accounts=loadAccountsLS();
+  const saved=recall('activeAccount');
+  if(!state.accounts.length)state.activeAccount=null;
+  else if(saved===ALL||!saved)state.activeAccount=ALL;
+  else if(state.accounts.find(a=>a.id===saved))state.activeAccount=saved;
+  else state.activeAccount=ALL;
+  renderAccounts();
+}
+function renderAccounts(){
+  const ul=$('accountList');ul.innerHTML='';
+  if(state.accounts.length>1){
+    const li=document.createElement('li');
+    li.className='account-item'+(state.activeAccount===ALL?' active':'');
+    li.innerHTML=`<div class="account-avatar" style="background:#5b6570">∑</div><div class="account-text"><div class="account-name">Alle Konten</div><div class="account-email">gemeinsamer Posteingang</div></div>`;
+    li.addEventListener('click',()=>switchAccount(ALL));ul.appendChild(li);
+  }
+  for(const a of state.accounts){
+    const li=document.createElement('li');
+    li.className='account-item'+(a.id===state.activeAccount?' active':'');
+    li.innerHTML=`<div class="account-avatar" style="background:${colorFor(a.email)}">${esc(initials(a.label||a.email))}</div><div class="account-text"><div class="account-name">${esc(a.label||a.email)}</div><div class="account-email">${esc(a.email)}</div></div><button class="account-del" title="Konto entfernen">✕</button>`;
+    li.querySelector('.account-text').addEventListener('click',()=>switchAccount(a.id));
+    li.querySelector('.account-avatar').addEventListener('click',()=>switchAccount(a.id));
+    li.querySelector('.account-del').addEventListener('click',e=>{e.stopPropagation();removeAccount(a.id)});
+    ul.appendChild(li);
+  }
+}
+function switchAccount(id){state.activeAccount=id;remember('activeAccount',id);state.activeCategory='inbox';renderAccounts();closeDrawer();loadInbox()}
+function removeAccount(id){
+  if(!confirm('Dieses Konto wirklich entfernen?'))return;
+  const rest=loadAccountsLS().filter(a=>a.id!==id);saveAccountsLS(rest);
+  const ov=loadOverrides();for(const k of Object.keys(ov))if(k.startsWith(id+':'))delete ov[k];saveOverrides(ov);
+  loadAccounts();
+  if(!state.accounts.length){openLogin();$('mailList').innerHTML='';renderTabs();renderCategories();return}
+  loadInbox();
+}
+
+// ---- Posteingang ----
+function accountsForRequest(){
+  if(state.activeAccount===ALL)return state.accounts;
+  const a=state.accounts.find(x=>x.id===state.activeAccount);return a?[a]:[];
+}
+function decorate(messages){
+  const ov=loadOverrides();
+  return messages.map(m=>{const o=ov[m.accountId+':'+m.uid];return{...m,category:o||m.suggested,manual:!!o}});
+}
+async function loadInbox(){
+  if(!state.activeAccount){openLogin();return}
+  setStatus('Lade Mails …');renderSkeleton();
+  try{
+    const res=await fetch('/api/inbox',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accounts:accountsForRequest(),limit:50})});
+    if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.error||('Fehler '+res.status))}
+    const data=await res.json();
+    state.messages=decorate(data.messages||[]);
+    if(data.errors&&data.errors.length)setStatus('Hinweis: '+data.errors.map(x=>x.account+': '+x.error).join(' · '),true);
+    else setStatus('');
+    renderTabs();renderCategories();renderList();
+  }catch(e){$('mailList').innerHTML='';setStatus('Konnte Mails nicht laden: '+e.message,true);renderTabs();renderCategories()}
+}
+
+// ---- Zähler / Reiter / Sidebar-Kategorien ----
+function countFor(id){return id==='inbox'?state.messages.filter(m=>m.category!=='spam').length:state.messages.filter(m=>m.category===id).length}
+function renderTabs(){const bar=$('tabBar');bar.innerHTML='';for(const c of state.categories){const n=countFor(c.id);const t=document.createElement('button');t.className='tab'+(c.id===state.activeCategory?' active':'');t.innerHTML=`<span>${c.icon} ${esc(c.name)}</span>${n?`<span class="tab-count">${n}</span>`:''}`;t.addEventListener('click',()=>selectCategory(c.id));bar.appendChild(t)}}
+function renderCategories(){const nav=$('categoryNav');nav.innerHTML='<div class="nav-label">Kategorien</div>';for(const c of state.categories){const d=document.createElement('div');d.className='cat-item'+(c.id===state.activeCategory?' active':'');const n=countFor(c.id);d.innerHTML=`<span class="cat-icon">${c.icon}</span><span class="cat-name">${esc(c.name)}</span>${n?`<span class="cat-count">${n}</span>`:''}`;d.addEventListener('click',()=>selectCategory(c.id));nav.appendChild(d)}}
+function selectCategory(id){state.activeCategory=id;renderTabs();renderCategories();closeDrawer();showList();renderList()}
+
+// ---- Liste ----
+function inCategory(){return state.activeCategory==='inbox'?state.messages.filter(m=>m.category!=='spam'):state.messages.filter(m=>m.category===state.activeCategory)}
+function renderSkeleton(){const ul=$('mailList');ul.innerHTML='';for(let i=0;i<6;i++){const li=document.createElement('li');li.className='skeleton';li.innerHTML='<div class="bar short"></div><div class="bar"></div>';ul.appendChild(li)}$('emptyState').classList.add('hidden')}
+function renderList(){
+  const ul=$('mailList');ul.innerHTML='';const msgs=inCategory();
+  if(!msgs.length){$('emptyState').classList.remove('hidden');return}
+  $('emptyState').classList.add('hidden');const uni=isUnified();
+  for(const m of msgs){
+    const li=document.createElement('li');li.className='mail-item'+(m.seen?'':' unread');
+    const cat=catById(m.category);const showTag=state.activeCategory==='inbox'&&m.category!=='inbox';
+    const hint=uni?`<span class="acct-hint"><span class="acct-dot" style="background:${colorFor(m.accountEmail||m.accountLabel)}"></span>${esc(m.accountLabel||'')}</span>`:'';
+    const meta=(showTag||hint)?`<div class="mail-meta-row">${showTag?`<span class="mail-tag${m.manual?' manual':''}">${cat.icon} ${esc(cat.name)}</span>`:''}${hint}</div>`:'';
+    li.innerHTML=`<div class="avatar" style="background:${colorFor(m.from)}">${esc(initials(m.from))}</div><div class="mail-body"><div class="mail-row"><span class="mail-from">${esc(nameOnly(m.from))}</span><span class="mail-date">${fmtDate(m.date)}</span></div><div class="mail-subject">${esc(m.subject)}</div>${meta}</div>`;
+    li.addEventListener('click',()=>openMessage(m));ul.appendChild(li);
+  }
+}
+
+// ---- Mail öffnen ----
+async function openMessage(m){
+  showDetail();
+  $('dSubject').textContent='Lade …';$('dFrom').textContent='';$('dDate').textContent='';$('dAvatar').textContent='';$('dAvatar').style.background='transparent';$('dBody').innerHTML='';
+  buildCatSelect(m);
+  const acc=state.accounts.find(a=>a.id===m.accountId);
+  if(!acc){$('dBody').innerHTML='<p style="color:#b42318;padding:0 16px">Konto nicht gefunden.</p>';return}
+  try{
+    const res=await fetch('/api/message',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({account:acc,uid:m.uid,spam:m.box==='spam'})});
+    if(!res.ok)throw new Error('Fehler '+res.status);
+    const full=await res.json();
+    $('dSubject').textContent=full.subject||'(kein Betreff)';
+    const suffix=isUnified()&&m.accountLabel?('  ·  '+m.accountLabel):'';
+    $('dFrom').textContent=(full.from||m.from)+suffix;
+    $('dDate').textContent=new Date(full.date).toLocaleString('de-DE');
+    $('dAvatar').textContent=initials(full.from||m.from);$('dAvatar').style.background=colorFor(full.from||m.from);
+    renderBody(full);
+  }catch(e){$('dBody').innerHTML=`<p style="color:#b42318;padding:0 16px">Konnte Nachricht nicht laden: ${esc(e.message)}</p>`}
+}
+function renderBody(full){
+  const b=$('dBody');
+  if(full.html){
+    const f=document.createElement('iframe');f.setAttribute('sandbox','allow-same-origin');f.style.width='100%';f.style.border='none';f.style.height='200px';
+    f.srcdoc=`<!DOCTYPE html><html><head><base target="_blank"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{font-family:-apple-system,sans-serif;color:#1a1a1a;margin:0;padding:16px;font-size:15px;line-height:1.5}img{max-width:100%;height:auto}a{color:#1f6feb}</style></head><body>${full.html}</body></html>`;
+    const rz=()=>{try{f.style.height=f.contentWindow.document.body.scrollHeight+30+'px'}catch{}};
+    f.addEventListener('load',()=>{rz();setTimeout(rz,300)});b.appendChild(f);
+  }else{b.innerHTML=`<pre style="white-space:pre-wrap;font-family:inherit;padding:16px;margin:0">${esc(full.text||'(kein Inhalt)')}</pre>`}
+}
+
+// ---- Kategorie ändern (nur lokal) ----
+function buildCatSelect(m){
+  const sel=$('catSelect');sel.innerHTML='';
+  for(const c of state.categories){const o=document.createElement('option');o.value=c.id;o.textContent=`${c.icon} ${c.name}`;if(c.id===m.category)o.selected=true;sel.appendChild(o)}
+  $('catHint').textContent=m.manual?'(von Hand gesetzt)':`(Vorschlag: ${catById(m.suggested).name})`;
+  sel.onchange=()=>changeCategory(m,sel.value);
+}
+function changeCategory(m,newCat){
+  const ov=loadOverrides();const key=m.accountId+':'+m.uid;
+  if(newCat===m.suggested)delete ov[key];else ov[key]=newCat;saveOverrides(ov);
+  const t=state.messages.find(x=>msgKey(x)===msgKey(m));
+  if(t){t.manual=newCat!==t.suggested;t.category=newCat;m.manual=t.manual;m.category=newCat}
+  $('catHint').textContent=(newCat!==m.suggested)?'(von Hand gesetzt)':`(Vorschlag: ${catById(m.suggested).name})`;
+  renderTabs();renderCategories();
+}
+
+// ---- Login ----
+const PROVIDERS={gmail:{host:'imap.gmail.com',port:993},gmx:{host:'imap.gmx.net',port:993},webde:{host:'imap.web.de',port:993},outlook:{host:'outlook.office365.com',port:993},yahoo:{host:'imap.mail.yahoo.com',port:993},custom:{host:'',port:993}};
+function openLogin(){$('loginModal').classList.remove('hidden')}
+function closeLogin(){$('loginModal').classList.add('hidden');$('loginError').classList.add('hidden')}
+$('provider').addEventListener('change',e=>{const p=PROVIDERS[e.target.value];if(p){$('fHost').value=p.host;$('fPort').value=p.port}});
+$('addAccountBtn').addEventListener('click',openLogin);
+$('loginCancel').addEventListener('click',()=>{if(state.accounts.length)closeLogin()});
+$('loginSave').addEventListener('click',saveAccount);
+function uuid(){return(crypto.randomUUID?crypto.randomUUID():'id'+Date.now()+Math.round(Math.random()*1e6))}
+async function saveAccount(){
+  const user=$('fUser').value.trim(),pass=$('fPass').value,host=$('fHost').value.trim(),port=Number($('fPort').value)||993,label=$('fLabel').value.trim();
+  if(!user||!pass||!host)return showLoginError('Bitte E-Mail, Passwort und Server ausfüllen.');
+  const btn=$('loginSave');btn.disabled=true;btn.textContent='Verbinde …';
+  try{
+    const res=await fetch('/api/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host,port,secure:true,user,pass})});
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Fehler');
+    const accs=loadAccountsLS();
+    const rec={id:uuid(),label:label||user,email:user,host,port,secure:true,user,pass};
+    accs.push(rec);saveAccountsLS(accs);
+    closeLogin();['fLabel','fUser','fPass','fHost'].forEach(id=>$(id).value='');$('provider').value='';
+    loadAccounts();
+    state.activeAccount=state.accounts.length>1?ALL:rec.id;remember('activeAccount',state.activeAccount);
+    renderAccounts();loadInbox();
+  }catch(e){showLoginError(e.message)}finally{btn.disabled=false;btn.textContent='Verbinden & speichern'}
+}
+function showLoginError(m){const el=$('loginError');el.textContent=m;el.classList.remove('hidden')}
+
+// ---- Verdrahtung ----
+$('menuBtn').addEventListener('click',openDrawer);
+$('scrim').addEventListener('click',closeDrawer);
+$('backBtn').addEventListener('click',showList);
+$('refreshBtn').addEventListener('click',loadInbox);
+
+// ---- Start ----
+(async function init(){
+  await loadCategories();
+  loadAccounts();
+  renderTabs();renderCategories();
+  if(!state.activeAccount){openLogin();return}
+  showList();loadInbox();
+})();
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
