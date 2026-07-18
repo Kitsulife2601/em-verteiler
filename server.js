@@ -586,7 +586,123 @@ app.get('/sw.js', (req, res) => {
   );
 });
 
-// Startseite
+// ---------------------------------------------------------------------------
+// Öffentliche Seiten für die Google-Verifizierung:
+// Info/Startseite, Datenschutzerklärung (mit Google "Limited Use"), Nutzungsbedingungen.
+// Platzhalter in [[eckigen Klammern]] bitte durch echte Angaben/Domain ersetzen.
+// ---------------------------------------------------------------------------
+const APP_NAME = 'Handy-Mail';
+const LEGAL_STAND = 'Juli 2026';
+function legalPage(title, bodyHtml) {
+  return `<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${title} · ${APP_NAME}</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#ede9fe;background:#0b0416;
+  background-image:radial-gradient(800px 500px at 85% -10%,rgba(124,58,237,.3),transparent 60%),radial-gradient(700px 500px at -10% 20%,rgba(168,85,247,.18),transparent 60%);background-attachment:fixed;line-height:1.6}
+.wrap{max-width:760px;margin:0 auto;padding:36px 22px 80px}
+.brand{display:inline-flex;align-items:center;gap:8px;font-weight:800;font-size:1.1rem;text-decoration:none;
+  background:linear-gradient(120deg,#e9d5ff,#c084fc);-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:8px}
+h1{font-size:1.7rem;margin:.2em 0 .1em;background:linear-gradient(120deg,#f3e8ff,#c084fc 55%,#8b5cf6);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{color:#c084fc;margin-top:30px;font-size:1.15rem}
+a{color:#c084fc}
+.stand{color:#9d8fc0;font-size:.85rem;margin-bottom:22px}
+.card{background:rgba(24,12,48,.55);border:1px solid rgba(168,85,247,.28);border-radius:16px;padding:22px 24px;backdrop-filter:blur(14px)}
+.note{background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.4);padding:12px 14px;border-radius:12px;font-size:.9rem;margin:18px 0}
+.ph{color:#f9a8d4;font-weight:700}
+.foot{margin-top:26px;font-size:.85rem;color:#9d8fc0}
+.foot a{margin-right:14px}
+ul{padding-left:20px}
+</style></head><body><div class="wrap">
+<a class="brand" href="/">📬 ${APP_NAME}</a>
+${bodyHtml}
+<div class="foot"><a href="/">Start</a><a href="/privacy">Datenschutz</a><a href="/terms">Nutzungsbedingungen</a></div>
+</div></body></html>`;
+}
+
+// Info-/Startseite (öffentlich, ohne Login) – als "Application home page" bei Google
+app.get('/info', (req, res) => {
+  res.type('html').send(legalPage('Über die App', `
+<h1>${APP_NAME}</h1>
+<p class="stand">Ein privater, übersichtlicher E-Mail-Client fürs Handy.</p>
+<div class="card">
+  <p>${APP_NAME} bündelt deine E-Mail-Postfächer an einem Ort und sortiert Nachrichten automatisch
+  in Kategorien wie <em>Rechnungen</em>, <em>Bestellungen</em> und <em>Verträge</em>.</p>
+  <h2>Was die App macht</h2>
+  <ul>
+    <li>Postfächer per IMAP verbinden – oder bequem über die Anmeldung mit Google/Microsoft.</li>
+    <li>E-Mails abrufen, lesen und automatisch nach Themen einordnen.</li>
+    <li>Zugangsdaten werden verschlüsselt gespeichert; E-Mail-Inhalte nur zur Anzeige geladen, nicht dauerhaft gespeichert.</li>
+  </ul>
+  <h2>Umgang mit Google-Daten</h2>
+  <p>Wenn du dich mit Google anmeldest, greift ${APP_NAME} ausschließlich auf <strong>dein eigenes Gmail-Postfach</strong> zu,
+  um dir deine Nachrichten in der App anzuzeigen. Die Nutzung hält sich an die
+  <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>
+  inklusive der <em>Limited Use</em>-Anforderungen. Details in der <a href="/privacy">Datenschutzerklärung</a>.</p>
+  <p><a href="/">→ Zur App</a></p>
+</div>`));
+});
+
+app.get('/privacy', (req, res) => {
+  res.type('html').send(legalPage('Datenschutzerklärung', `
+<h1>Datenschutzerklärung</h1>
+<p class="stand">Stand: ${LEGAL_STAND}</p>
+<div class="card">
+<div class="note">Bitte ersetze die <span class="ph">[[markierten]]</span> Angaben durch deine echten Kontaktdaten
+und – nach dem Umzug auf eine eigene Domain – die richtige Adresse.</div>
+
+<h2>1. Verantwortlicher</h2>
+<p><span class="ph">[[Vor- und Nachname]]</span><br>
+E-Mail: <span class="ph">[[deine-kontakt@email.de]]</span></p>
+
+<h2>2. Welche Daten wir verarbeiten</h2>
+<ul>
+  <li><strong>Kontodaten:</strong> Name (optional) und E-Mail-Adresse zur Anmeldung.</li>
+  <li><strong>Postfach-Zugang:</strong> IMAP-Zugangsdaten bzw. OAuth-Tokens – ausschließlich <strong>verschlüsselt</strong> gespeichert, nur um deine Mails abzurufen.</li>
+  <li><strong>E-Mail-Inhalte:</strong> werden nur zur Anzeige geladen und <strong>nicht dauerhaft</strong> auf dem Server gespeichert.</li>
+</ul>
+
+<h2>3. Google-Nutzerdaten (Gmail)</h2>
+<p>Meldest du dich mit Google an, verwendet ${APP_NAME} den Gmail-Zugriff einzig dafür, dir <strong>deine eigenen E-Mails</strong> in der App anzuzeigen.</p>
+<p>Die Nutzung und Weitergabe von Informationen aus Google APIs hält sich an die
+<a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>,
+einschließlich der <strong>Limited Use</strong>-Anforderungen. Konkret:</p>
+<ul>
+  <li>Wir geben Gmail-Daten <strong>nicht an Dritte</strong> weiter.</li>
+  <li>Wir nutzen sie <strong>nicht für Werbung</strong>.</li>
+  <li>Wir nutzen sie <strong>nicht zum Training von KI-/ML-Modellen</strong>.</li>
+  <li>Kein Mensch liest deine Daten, außer es ist für den Betrieb/Support nötig oder gesetzlich vorgeschrieben.</li>
+</ul>
+
+<h2>4. Speicherung & Löschung</h2>
+<p>Deine Daten liegen auf dem Server, auf dem die App betrieben wird. Du kannst Postfächer jederzeit in der App entfernen;
+für die Löschung deines Kontos wende dich an die oben genannte Kontaktadresse.</p>
+
+<h2>5. Deine Rechte</h2>
+<p>Du hast das Recht auf Auskunft, Berichtigung, Löschung und Einschränkung der Verarbeitung deiner Daten.</p>
+</div>`));
+});
+
+app.get('/terms', (req, res) => {
+  res.type('html').send(legalPage('Nutzungsbedingungen', `
+<h1>Nutzungsbedingungen</h1>
+<p class="stand">Stand: ${LEGAL_STAND}</p>
+<div class="card">
+<h2>1. Leistung</h2>
+<p>${APP_NAME} ist ein privater E-Mail-Client, mit dem du deine eigenen Postfächer abrufen und lesen kannst.
+Die App wird ohne Gewähr auf ständige Verfügbarkeit bereitgestellt.</p>
+<h2>2. Deine Verantwortung</h2>
+<p>Du bist für die Sicherheit deiner Zugangsdaten selbst verantwortlich und nutzt nur Postfächer, zu denen du berechtigt bist.</p>
+<h2>3. Haftung</h2>
+<p>Die Nutzung erfolgt auf eigenes Risiko. Für Datenverluste oder Ausfälle wird im gesetzlich zulässigen Rahmen keine Haftung übernommen.</p>
+<h2>4. Kontakt</h2>
+<p><span class="ph">[[deine-kontakt@email.de]]</span></p>
+</div>`));
+});
+
+// Startseite (die App)
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 
 app.listen(PORT, () => console.log(`Handy-Mail (online) läuft auf Port ${PORT}`));

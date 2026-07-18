@@ -114,6 +114,9 @@ select option{background:#1a0d33;color:var(--text)}
 .auth-switch b{color:var(--neon);cursor:pointer;font-weight:700}
 .auth-card.mode-register .auth-switch b{color:#f472b6}
 .auth-hint{text-align:center;color:var(--muted);font-size:.72rem;margin:14px 0 0;opacity:.85}
+.auth-legal{text-align:center;font-size:.72rem;margin:8px 0 0}
+.auth-legal a{color:var(--muted);text-decoration:none}
+.auth-legal a:hover{color:var(--neon)}
 .oauth-divider{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:.78rem;margin:18px 0 14px}
 .oauth-divider::before,.oauth-divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .oauth-btns{display:flex;flex-direction:column;gap:10px}
@@ -314,6 +317,7 @@ select option{background:#1a0d33;color:var(--text)}
     <div id="oauthDivider" class="oauth-divider hidden"><span>oder weiter mit</span></div>
     <div id="oauthBtns" class="oauth-btns"></div>
     <p class="auth-hint">Dein Konto schützt den Zugang zur App.<br />Deine Postfächer sind damit auf allen Geräten verfügbar.</p>
+    <p class="auth-legal"><a href="/info" target="_blank">Über die App</a> · <a href="/privacy" target="_blank">Datenschutz</a> · <a href="/terms" target="_blank">Nutzungsbedingungen</a></p>
   </div>
 </div>
 
