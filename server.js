@@ -178,6 +178,11 @@ const OAUTH_PROVIDERS = {
     tokenUrl: envAny('GOOGLE_TOKEN_URL') || 'https://oauth2.googleapis.com/token',
     userinfoUrl: envAny('GOOGLE_USERINFO_URL') || 'https://openidconnect.googleapis.com/v1/userinfo',
     scope: 'openid email profile',
+    // Postfach direkt über die Google-Anmeldung freischalten (IMAP per OAuth)
+    mailScope: 'https://mail.google.com/',
+    imapHost: envAny('GOOGLE_IMAP_HOST') || 'imap.gmail.com',
+    imapPort: Number(envAny('GOOGLE_IMAP_PORT')) || 993,
+    authExtra: { access_type: 'offline', prompt: 'consent' },
   },
   microsoft: {
     name: 'Microsoft',
@@ -187,6 +192,9 @@ const OAUTH_PROVIDERS = {
     tokenUrl: envAny('MS_TOKEN_URL') || 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
     userinfoUrl: envAny('MS_USERINFO_URL') || 'https://graph.microsoft.com/oidc/userinfo',
     scope: 'openid email profile',
+    mailScope: 'https://outlook.office.com/IMAP.AccessAsUser.All offline_access',
+    imapHost: envAny('MS_IMAP_HOST') || 'outlook.office365.com',
+    imapPort: Number(envAny('MS_IMAP_PORT')) || 993,
   },
   yahoo: {
     name: 'Yahoo',
@@ -226,15 +234,30 @@ app.get('/api/auth/providers', (req, res) => {
   res.json(enabledProviders().map(([id, p]) => ({ id, name: p.name })));
 });
 
+async function getAccessToken(providerId, refreshToken) {
+  const p = OAUTH_PROVIDERS[providerId];
+  if (!p) throw new Error('Unbekannter Anbieter.');
+  const res = await fetch(p.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ client_id: p.clientId, client_secret: p.clientSecret, grant_type: 'refresh_token', refresh_token: refreshToken }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) throw new Error(data.error_description || data.error || 'Zugriffstoken konnte nicht erneuert werden');
+  return data.access_token;
+}
+
 app.get('/auth/:provider', (req, res) => {
   const p = OAUTH_PROVIDERS[req.params.provider];
   if (!p || !p.clientId || !p.clientSecret) return res.redirect('/#autherror=' + encodeURIComponent('Dieser Anbieter ist nicht eingerichtet.'));
+  const scope = [p.scope, p.mailScope].filter(Boolean).join(' ');
   const params = new URLSearchParams({
     client_id: p.clientId,
     redirect_uri: oauthRedirectUri(req, req.params.provider),
     response_type: 'code',
-    scope: p.scope,
+    scope,
     state: makeOAuthState(),
+    ...(p.authExtra || {}),
   });
   res.redirect(`${p.authUrl}?${params}`);
 });
@@ -272,14 +295,22 @@ app.get('/auth/:provider/callback', async (req, res) => {
         name: String(info.name || '').trim() || mail.split('@')[0],
         email: mail,
         provider: id,
+        accounts: [],
         createdAt: new Date().toISOString(),
       };
       userDB.users.push(user);
-      saveUserDB();
     } else if (!user.provider) {
       user.provider = id; // bestehendes Passwort-Konto mit dem Anbieter verknüpfen
-      saveUserDB();
     }
+    // Postfach direkt über die Anmeldung verbinden – kein extra 'Konto verbinden' nötig.
+    // Braucht ein Refresh-Token (Google: access_type=offline, Microsoft: offline_access).
+    if (p.imapHost && tokens.refresh_token) {
+      const accounts = userAccounts(user);
+      const existing = accounts.find((a) => a.type === 'oauth' && a.provider === id && a.email === mail);
+      if (existing) existing.refreshEnc = encryptSecret(tokens.refresh_token);
+      else accounts.push(buildOAuthAccount({ provider: id, email: mail, host: p.imapHost, port: p.imapPort, refreshToken: tokens.refresh_token }));
+    }
+    saveUserDB();
     res.redirect('/#token=' + encodeURIComponent(signToken(user.id)));
   } catch (err) {
     fail(`Anmeldung über ${p.name} fehlgeschlagen: ${err.message}`);
@@ -306,10 +337,7 @@ function decryptSecret(enc) {
 }
 function userAccounts(u) { if (!Array.isArray(u.accounts)) u.accounts = []; return u.accounts; }
 function accountPublic(a) {
-  return { id: a.id, label: a.label, email: a.email, host: a.host, port: a.port, secure: a.secure };
-}
-function accountFull(a) {
-  return { ...accountPublic(a), user: a.user, pass: decryptSecret(a.passEnc) };
+  return { id: a.id, label: a.label, email: a.email, host: a.host, port: a.port, secure: a.secure, type: a.type || 'password', provider: a.provider || null };
 }
 function buildAccount({ label, email, user, pass, host, port, secure }) {
   return {
@@ -322,6 +350,29 @@ function buildAccount({ label, email, user, pass, host, port, secure }) {
     user: String(user).trim(),
     passEnc: encryptSecret(pass),
   };
+}
+function buildOAuthAccount({ provider, email, host, port, refreshToken }) {
+  const mail = String(email).trim();
+  return {
+    id: crypto.randomUUID(),
+    type: 'oauth',
+    provider,
+    label: mail,
+    email: mail,
+    host: String(host).trim(),
+    port: Number(port) || 993,
+    secure: true,
+    user: mail,
+    refreshEnc: encryptSecret(refreshToken),
+  };
+}
+// Baut einen verbindungsbereiten IMAP-Client – für Passwort- wie für OAuth-Konten.
+async function resolveClient(acc) {
+  if (acc.type === 'oauth') {
+    const accessToken = await getAccessToken(acc.provider, decryptSecret(acc.refreshEnc));
+    return new ImapFlow({ host: acc.host, port: Number(acc.port) || 993, secure: acc.secure !== false, auth: { user: acc.user, accessToken }, logger: false });
+  }
+  return clientFor({ ...acc, pass: decryptSecret(acc.passEnc) });
 }
 
 app.get('/api/accounts', requireAuth, (req, res) => {
@@ -433,7 +484,7 @@ async function findJunkPath(client) {
   } catch { return null; }
 }
 async function inboxForAccount(acc, limit) {
-  const client = clientFor(acc);
+  const client = await resolveClient(acc);
   try {
     await client.connect();
     const inbox = await fetchMailbox(client, 'INBOX', limit);
@@ -464,7 +515,7 @@ app.get('/api/categories', (req, res) => {
 app.post('/api/inbox', requireAuth, async (req, res) => {
   const all = userAccounts(req.user);
   const ids = Array.isArray(req.body?.accountIds) ? req.body.accountIds : null;
-  const accounts = (ids ? all.filter((a) => ids.includes(a.id)) : all).map(accountFull);
+  const accounts = ids ? all.filter((a) => ids.includes(a.id)) : all;
   const limit = Math.min(Number(req.body?.limit) || 40, 100);
   if (!accounts.length) return res.json({ messages: [], errors: [] });
 
@@ -484,7 +535,7 @@ app.post('/api/message', requireAuth, async (req, res) => {
   const { accountId, uid, spam } = req.body || {};
   const stored = userAccounts(req.user).find((a) => a.id === accountId);
   if (!stored || !uid) return res.status(400).json({ error: 'accountId und uid nötig.' });
-  const client = clientFor(accountFull(stored));
+  const client = await resolveClient(stored);
   try {
     await client.connect();
     let mailboxPath = 'INBOX';

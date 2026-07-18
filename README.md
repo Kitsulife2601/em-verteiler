@@ -18,10 +18,20 @@ ganz normal mit E-Mail + Passwort.
 
 ### Google (empfohlen)
 
+Die Google-Anmeldung schaltet gleich das **Gmail-Postfach** frei (per IMAP über OAuth),
+sodass kein separates Postfach mehr verbunden werden muss. Dafür wird die Berechtigung
+`https://mail.google.com/` angefragt.
+
 1. Öffne die [Google Cloud Console](https://console.cloud.google.com/) und lege ein Projekt an (kostenlos).
 2. Gehe zu **APIs & Dienste → OAuth-Zustimmungsbildschirm**: Typ „Extern" wählen,
-   App-Name und deine E-Mail eintragen, speichern. Unter „Testnutzer" deine eigene
-   Google-Adresse hinzufügen (solange die App im Testmodus ist).
+   App-Name und deine E-Mail eintragen. Unter „Testnutzer" deine eigene Google-Adresse
+   hinzufügen (solange die App im Testmodus ist).
+   - Unter **Bereiche/Scopes** (bzw. „Scopes hinzufügen") den Bereich
+     `https://mail.google.com/` hinzufügen. Das ist ein „sensibler/eingeschränkter"
+     Bereich: Solange die App im **Testmodus** ist und du **Testnutzer** bist, funktioniert
+     er sofort – Google zeigt beim Anmelden nur einen Warnhinweis („Google hat diese App
+     nicht bestätigt"), den du über **Erweitert → Weiter zu … (unsicher)** bestätigst.
+     Für die Nutzung durch fremde Personen müsste die App später von Google verifiziert werden.
 3. Gehe zu **APIs & Dienste → Anmeldedaten → Anmeldedaten erstellen → OAuth-Client-ID**:
    - Anwendungstyp: **Webanwendung**
    - Autorisierte Weiterleitungs-URI: `https://DEINE-APP.onrender.com/auth/google/callback`
@@ -32,13 +42,20 @@ ganz normal mit E-Mail + Passwort.
    - `GOOGLE_CLIENT_SECRET` = dein Client-Secret
 6. Speichern – Render startet neu, danach erscheint „Weiter mit Google" auf der Anmeldeseite.
 
+> Hinweis: Wenn du den Gmail-Bereich neu hinzufügst, beim nächsten Login unbedingt die
+> Zustimmung erneut erteilen (die App fragt mit `prompt=consent` nach), damit Google ein
+> Refresh-Token ausstellt – nur dann kann das Postfach dauerhaft abgerufen werden.
+
 ### Microsoft (Outlook / Office365)
 
 1. [Azure-Portal](https://portal.azure.com/) → **Microsoft Entra ID → App-Registrierungen → Neue Registrierung**
 2. Unterstützte Kontotypen: „Konten in einem beliebigen Organisationsverzeichnis und persönliche Microsoft-Konten"
 3. Umleitungs-URI (Web): `https://DEINE-APP.onrender.com/auth/microsoft/callback`
-4. Unter **Zertifikate & Geheimnisse** ein Client-Secret erstellen.
-5. Render-Umgebungsvariablen: `MS_CLIENT_ID` und `MS_CLIENT_SECRET`
+4. Unter **API-Berechtigungen** die Berechtigungen `offline_access` und
+   `IMAP.AccessAsUser.All` (Office 365 Exchange Online) hinzufügen – damit wird das
+   Outlook-Postfach wie bei Google automatisch verbunden.
+5. Unter **Zertifikate & Geheimnisse** ein Client-Secret erstellen.
+6. Render-Umgebungsvariablen: `MS_CLIENT_ID` und `MS_CLIENT_SECRET`
 
 ### Yahoo
 
