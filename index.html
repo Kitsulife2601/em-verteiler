@@ -94,6 +94,9 @@ select option{background:#1a0d33;color:var(--text)}
 .pass-toggle{position:absolute;right:6px;top:calc(50% + 3px);transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:6px;line-height:1}
 .pass-hint{font-size:.72rem;color:var(--muted);margin:-8px 0 14px;padding-left:2px}
 .reg-serverhint{font-size:.72rem;color:var(--muted);margin:-6px 0 14px;padding-left:2px}
+.apppw-help{font-size:.78rem;color:#e9d5ff;background:rgba(168,85,247,.12);border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin:-2px 0 14px;line-height:1.5}
+.apppw-help a{color:var(--neon);font-weight:700;white-space:nowrap;text-decoration:none}
+.apppw-help a:hover{text-decoration:underline}
 .auth-error{
   color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.38);
   padding:11px 13px;border-radius:12px;font-size:.85rem;margin-bottom:14px;line-height:1.45;
@@ -303,6 +306,7 @@ select option{background:#1a0d33;color:var(--text)}
         </span>
       </label>
       <div id="passHint" class="pass-hint hidden">Passwort deines Postfachs · bei Gmail/Yahoo ein App-Passwort (mind. 6 Zeichen).</div>
+      <div id="appPwHelp" class="apppw-help hidden"></div>
       <div id="regServer" class="reg-extra hidden">
         <div class="row2">
           <label>IMAP-Server<input id="authHost" type="text" placeholder="imap.anbieter.de" /></label>
@@ -458,11 +462,30 @@ const AUTH_IMAP_HOSTS={
   't-online.de':'secureimap.t-online.de','aol.com':'imap.aol.com','aol.de':'imap.aol.com'
 };
 function detectHost(email){const d=(String(email||'').toLowerCase().split('@')[1]||'');return AUTH_IMAP_HOSTS[d]||''}
+// Anbieter, die statt des normalen Passworts ein App-Passwort brauchen – mit direktem Link
+const APPPW_HELP={
+  'gmail.com':{label:'Gmail',url:'https://myaccount.google.com/apppasswords'},
+  'googlemail.com':{label:'Gmail',url:'https://myaccount.google.com/apppasswords'},
+  'yahoo.com':{label:'Yahoo',url:'https://login.yahoo.com/myaccount/security/app-passwords'},
+  'yahoo.de':{label:'Yahoo',url:'https://login.yahoo.com/myaccount/security/app-passwords'},
+  'ymail.com':{label:'Yahoo',url:'https://login.yahoo.com/myaccount/security/app-passwords'}
+};
+function updateAppPwHelp(){
+  const box=$('appPwHelp');
+  const d=(($('authEmail').value.split('@')[1])||'').toLowerCase();
+  const h=APPPW_HELP[d];
+  if(authMode==='register'&&h){
+    box.innerHTML='🔐 '+esc(h.label)+' braucht ein <b>App-Passwort</b> (nicht dein normales Passwort). <a href="'+h.url+'" target="_blank" rel="noopener">App-Passwort erstellen ↗</a>';
+    box.classList.remove('hidden');
+  }else box.classList.add('hidden');
+}
 let hostEdited=false;
 function autofillHost(){
-  if(hostEdited)return;
-  const h=detectHost($('authEmail').value);
-  if(h){$('authHost').value=h;if(!$('authPort').value)$('authPort').value=993}
+  if(!hostEdited){
+    const h=detectHost($('authEmail').value);
+    if(h){$('authHost').value=h;if(!$('authPort').value)$('authPort').value=993}
+  }
+  updateAppPwHelp();
 }
 function setAuthMode(mode){
   authMode=mode;
@@ -475,6 +498,7 @@ function setAuthMode(mode){
   $('authNameRow').classList.toggle('hidden',mode!=='register');
   $('passHint').classList.toggle('hidden',mode!=='register');
   $('regServer').classList.toggle('hidden',mode!=='register');
+  if(mode!=='register')$('appPwHelp').classList.add('hidden');
   $('authLogo').textContent=c.logo;
   $('authTitle').textContent=c.title;
   $('authSub').textContent=c.sub;
