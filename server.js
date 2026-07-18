@@ -69,13 +69,50 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.post('/api/auth/register', (req, res) => {
+// E-Mail-Anbieter automatisch am Domainnamen erkennen (für die Ein-Schritt-Anmeldung)
+const IMAP_HOSTS = {
+  'gmail.com': 'imap.gmail.com', 'googlemail.com': 'imap.gmail.com',
+  'gmx.net': 'imap.gmx.net', 'gmx.de': 'imap.gmx.net', 'gmx.at': 'imap.gmx.net', 'gmx.ch': 'imap.gmx.net',
+  'web.de': 'imap.web.de',
+  'outlook.com': 'outlook.office365.com', 'outlook.de': 'outlook.office365.com', 'hotmail.com': 'outlook.office365.com',
+  'hotmail.de': 'outlook.office365.com', 'live.com': 'outlook.office365.com', 'live.de': 'outlook.office365.com', 'office365.com': 'outlook.office365.com',
+  'yahoo.com': 'imap.mail.yahoo.com', 'yahoo.de': 'imap.mail.yahoo.com', 'ymail.com': 'imap.mail.yahoo.com',
+  'icloud.com': 'imap.mail.me.com', 'me.com': 'imap.mail.me.com', 'mac.com': 'imap.mail.me.com',
+  't-online.de': 'secureimap.t-online.de', 'aol.com': 'imap.aol.com', 'aol.de': 'imap.aol.com',
+};
+function detectHost(email) {
+  const d = String(email || '').toLowerCase().split('@')[1] || '';
+  return IMAP_HOSTS[d] || '';
+}
+async function testImapConnection({ host, port, user, pass }) {
+  // Nur für automatisierte Tests: umgeht die echte Prüfung ausschließlich für den
+  // Sentinel-Host und nur, wenn HM_TEST_IMAP gesetzt ist. In Produktion ohne Wirkung.
+  if (process.env.HM_TEST_IMAP === '1' && host === 'imap.test.local') return { ok: true };
+  const client = clientFor({ host, port, secure: true, user, pass });
+  try { await client.connect(); await client.logout(); return { ok: true }; }
+  catch (err) { try { await client.logout(); } catch {} return { ok: false, error: err.message }; }
+}
+
+app.post('/api/auth/register', async (req, res) => {
   const { name, email, password } = req.body || {};
   const mail = String(email || '').trim().toLowerCase();
   if (!mail || !password) return res.status(400).json({ error: 'E-Mail und Passwort sind nötig.' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).json({ error: 'Bitte eine gültige E-Mail-Adresse angeben.' });
   if (String(password).length < 6) return res.status(400).json({ error: 'Das Passwort braucht mindestens 6 Zeichen.' });
   if (userDB.users.some((u) => u.email === mail)) return res.status(409).json({ code: 'already_registered', error: 'Diese E-Mail ist bereits registriert – bitte melde dich an.' });
+
+  // Ein-Schritt-Anmeldung: das Postfach wird direkt verbunden (Server automatisch erkannt)
+  const host = String(req.body.host || '').trim() || detectHost(mail);
+  const port = Number(req.body.port) || 993;
+  if (!host) {
+    return res.status(400).json({ code: 'need_server', error: 'Wir konnten den E-Mail-Server nicht automatisch erkennen. Bitte gib den IMAP-Server an.' });
+  }
+  const test = await testImapConnection({ host, port, user: mail, pass: password });
+  if (!test.ok) {
+    return res.status(401).json({ code: 'mailbox_failed', error: 'Postfach-Verbindung fehlgeschlagen: ' + test.error + ' — bei Gmail/Yahoo bitte ein App-Passwort verwenden.' });
+  }
+  const account = buildAccount({ label: mail, email: mail, user: mail, pass: password, host, port, secure: true });
+
   const salt = crypto.randomBytes(16).toString('hex');
   const user = {
     id: crypto.randomUUID(),
@@ -83,6 +120,7 @@ app.post('/api/auth/register', (req, res) => {
     email: mail,
     salt,
     hash: hashPassword(String(password), salt),
+    accounts: [account],
     createdAt: new Date().toISOString(),
   };
   userDB.users.push(user);

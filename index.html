@@ -93,6 +93,7 @@ select option{background:#1a0d33;color:var(--text)}
 .pass-wrap input{padding-right:46px}
 .pass-toggle{position:absolute;right:6px;top:calc(50% + 3px);transform:translateY(-50%);background:none;border:none;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:6px;line-height:1}
 .pass-hint{font-size:.72rem;color:var(--muted);margin:-8px 0 14px;padding-left:2px}
+.reg-serverhint{font-size:.72rem;color:var(--muted);margin:-6px 0 14px;padding-left:2px}
 .auth-error{
   color:#fecaca;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.38);
   padding:11px 13px;border-radius:12px;font-size:.85rem;margin-bottom:14px;line-height:1.45;
@@ -298,7 +299,14 @@ select option{background:#1a0d33;color:var(--text)}
           <button id="passToggle" class="pass-toggle" type="button" aria-label="Passwort anzeigen">👁</button>
         </span>
       </label>
-      <div id="passHint" class="pass-hint hidden">Mindestens 6 Zeichen wählen.</div>
+      <div id="passHint" class="pass-hint hidden">Passwort deines Postfachs · bei Gmail/Yahoo ein App-Passwort (mind. 6 Zeichen).</div>
+      <div id="regServer" class="reg-extra hidden">
+        <div class="row2">
+          <label>IMAP-Server<input id="authHost" type="text" placeholder="imap.anbieter.de" /></label>
+          <label>Port<input id="authPort" type="number" value="993" /></label>
+        </div>
+        <div class="reg-serverhint">Wird meist automatisch erkannt – nur bei einem anderen Anbieter anpassen.</div>
+      </div>
       <div id="authError" class="auth-error hidden"></div>
       <button id="authSubmit" class="btn-neon" type="submit">Anmelden</button>
     </form>
@@ -432,8 +440,26 @@ function handleUnauthorized(){forget(TKEY);forget(UKEY);showAuth()}
 let authMode='login';
 const AUTH_COPY={
   login:{logo:'👋',title:'Willkommen zurück',sub:'Melde dich an, um deine Postfächer zu öffnen.',btn:'Anmelden',switch:'Noch kein Konto? <b id="switchLink">Jetzt registrieren</b>'},
-  register:{logo:'✨',title:'Konto erstellen',sub:'In wenigen Sekunden startklar – leg dir dein Konto an.',btn:'Konto erstellen',switch:'Schon ein Konto? <b id="switchLink">Hier anmelden</b>'}
+  register:{logo:'✨',title:'Postfach verbinden',sub:'E-Mail und Passwort genügen – danach siehst du direkt deine Mails.',btn:'Verbinden & loslegen',switch:'Schon ein Konto? <b id="switchLink">Hier anmelden</b>'}
 };
+// E-Mail-Anbieter automatisch am Domainnamen erkennen
+const AUTH_IMAP_HOSTS={
+  'gmail.com':'imap.gmail.com','googlemail.com':'imap.gmail.com',
+  'gmx.net':'imap.gmx.net','gmx.de':'imap.gmx.net','gmx.at':'imap.gmx.net','gmx.ch':'imap.gmx.net',
+  'web.de':'imap.web.de',
+  'outlook.com':'outlook.office365.com','outlook.de':'outlook.office365.com','hotmail.com':'outlook.office365.com',
+  'hotmail.de':'outlook.office365.com','live.com':'outlook.office365.com','live.de':'outlook.office365.com','office365.com':'outlook.office365.com',
+  'yahoo.com':'imap.mail.yahoo.com','yahoo.de':'imap.mail.yahoo.com','ymail.com':'imap.mail.yahoo.com',
+  'icloud.com':'imap.mail.me.com','me.com':'imap.mail.me.com','mac.com':'imap.mail.me.com',
+  't-online.de':'secureimap.t-online.de','aol.com':'imap.aol.com','aol.de':'imap.aol.com'
+};
+function detectHost(email){const d=(String(email||'').toLowerCase().split('@')[1]||'');return AUTH_IMAP_HOSTS[d]||''}
+let hostEdited=false;
+function autofillHost(){
+  if(hostEdited)return;
+  const h=detectHost($('authEmail').value);
+  if(h){$('authHost').value=h;if(!$('authPort').value)$('authPort').value=993}
+}
 function setAuthMode(mode){
   authMode=mode;
   const c=AUTH_COPY[mode];
@@ -444,6 +470,7 @@ function setAuthMode(mode){
   $('tabRegister').classList.toggle('active',mode==='register');
   $('authNameRow').classList.toggle('hidden',mode!=='register');
   $('passHint').classList.toggle('hidden',mode!=='register');
+  $('regServer').classList.toggle('hidden',mode!=='register');
   $('authLogo').textContent=c.logo;
   $('authTitle').textContent=c.title;
   $('authSub').textContent=c.sub;
@@ -452,9 +479,12 @@ function setAuthMode(mode){
   $('switchLink').onclick=()=>setAuthMode(mode==='login'?'register':'login');
   $('authPass').setAttribute('autocomplete',mode==='login'?'current-password':'new-password');
   $('authError').classList.add('hidden');
+  if(mode==='register')autofillHost();
 }
 $('tabLogin').addEventListener('click',()=>setAuthMode('login'));
 $('tabRegister').addEventListener('click',()=>setAuthMode('register'));
+$('authEmail').addEventListener('input',()=>{if(authMode==='register')autofillHost()});
+$('authHost').addEventListener('input',()=>{hostEdited=true});
 $('passToggle').addEventListener('click',()=>{
   const i=$('authPass'),show=i.type==='password';
   i.type=show?'text':'password';$('passToggle').textContent=show?'🙈':'👁';
@@ -470,11 +500,13 @@ $('authForm').addEventListener('submit',async e=>{
   const email=$('authEmail').value.trim(),password=$('authPass').value,name=$('authName').value.trim();
   if(!email||!password)return showAuthError('Bitte E-Mail und Passwort ausfüllen.');
   if(authMode==='register'&&password.length<6)return showAuthError('Das Passwort braucht mindestens 6 Zeichen.');
-  const btn=$('authSubmit');btn.disabled=true;const oldText=btn.textContent;btn.textContent='Bitte warten …';
+  const host=$('authHost').value.trim(),port=Number($('authPort').value)||993;
+  if(authMode==='register'&&!host)return showAuthError('Bitte gib deinen E-Mail-Server an (z. B. imap.anbieter.de).');
+  const btn=$('authSubmit');btn.disabled=true;const oldText=btn.textContent;btn.textContent=authMode==='register'?'Verbinde dein Postfach …':'Bitte warten …';
   try{
     const res=await fetch('/api/auth/'+(authMode==='login'?'login':'register'),{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(authMode==='login'?{email,password}:{email,password,name})
+      body:JSON.stringify(authMode==='login'?{email,password}:{email,password,name,host,port})
     });
     const data=await res.json().catch(()=>({}));
     if(!res.ok){
